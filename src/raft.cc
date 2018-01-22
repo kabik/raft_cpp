@@ -1,4 +1,5 @@
 #include "raft.h"
+#include "state.h"
 
 Raft::Raft(char* configFileName) {
     createConfig(configFileName);
