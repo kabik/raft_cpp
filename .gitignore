@@ -1,0 +1,6 @@
+.git
+*.sh
+*.o
+*.out
+bin/
+tmp/
