@@ -2,6 +2,7 @@ CC := g++
 CFLAGS := -g -Wall -Wextra
 OBJ_DIR := bin
 L := main
+RM := rm -ri
 
 all: $(L)
 
@@ -12,4 +13,4 @@ all: $(L)
 	$(CC) -O $< -o $(OBJ_DIR)/$@.o
 
 clean:
-	$(RM) -rf *.o $(OBJ_DIR)
+	$(RM) $(OBJ_DIR)
