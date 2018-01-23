@@ -2,15 +2,15 @@
 
 using namespace std;
 
-typedef struct _host {
-    string hostname;
+typedef struct _node {
+    string nodename;
     int port;
-} host_t;
+} node_t;
 
 class Config {
 private:
     int nNodes;
-    vector<host_t* > hosts;
+    vector<node_t* > nodes;
 
 public:
     Config() {}
@@ -22,10 +22,10 @@ public:
         this->nNodes = nNodes;
     }
 
-    vector<host_t*> getHosts() {
-        return hosts;
+    vector<node_t*> getNodes() {
+        return nodes;
     }
-    void setHosts(vector<host_t*> hosts) {
-        this->hosts = hosts;
+    void setNodes(vector<node_t*> nodes) {
+        this->nodes = nodes;
     }
 };

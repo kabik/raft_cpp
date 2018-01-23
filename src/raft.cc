@@ -16,7 +16,7 @@ void Raft::createConfig(char* configFileName) {
         exit(1);
     }
 
-    vector<host_t*> hosts;
+    vector<node_t*> nodes;
 
     int cnt = 0;
     string str;
@@ -24,10 +24,10 @@ void Raft::createConfig(char* configFileName) {
         if (!str.empty()) {
             vector<string> strs = split(str, ':');
 
-            host_t* h = (host_t*)calloc(1, sizeof(host_t));
-            h->hostname = strs[0];
+            node_t* h = (node_t*)calloc(1, sizeof(node_t));
+            h->nodename = strs[0];
             h->port = stoi(strs[1]);
-            hosts.push_back(h);
+            nodes.push_back(h);
 
             cnt++;
         }
