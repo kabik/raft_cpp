@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "raft.cc"
+#include "raft.h"
 
 using namespace std;
 
@@ -11,7 +11,8 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    Raft *raft = new Raft(argv[1]);
+    Raft *raft = new Raft();
+    raft->createConfig(argv[1]);
 
     return 0;
 }

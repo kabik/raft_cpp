@@ -1,18 +1,17 @@
-#include <stdio.h>
-#include <fstream>
-#include <sstream>
+#ifndef RAFT_H
+#define RAFT_H
 
-#include "config.cc"
-#include "functions.cc"
-
-using namespace std;
+class Config;
 
 class Raft {
 private:
     Config *config;
-    void createConfig(char* configFileName);
 
 public:
-    Raft(char* configFileName);
-    Config getConfig();
+    Raft();
+    void createConfig(char* configFileName);
+    Config* getConfig();
 };
+
+#include "raft.cc"
+#endif //RAFT_H

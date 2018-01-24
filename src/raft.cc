@@ -1,35 +1,15 @@
+#include <stdio.h>
+
 #include "raft.h"
+#include "config.h"
 #include "state.h"
 
-Raft::Raft(char* configFileName) {
-    createConfig(configFileName);
-}
+Raft::Raft() {}
 
 void Raft::createConfig(char* configFileName) {
-    config = new Config();
+    this->config = new Config(configFileName);
+}
 
-    ifstream ifs(configFileName);
-
-    // ファイルが無かったら終了
-    if (!ifs) {
-        cerr << "File \"" << configFileName << "\" cannot be opened." << endl;
-        exit(1);
-    }
-
-    vector<node_t*> nodes;
-
-    int cnt = 0;
-    string str;
-    while (getline(ifs, str)) {
-        if (!str.empty()) {
-            vector<string> strs = split(str, ':');
-
-            node_t* h = (node_t*)calloc(1, sizeof(node_t));
-            h->nodename = strs[0];
-            h->port = stoi(strs[1]);
-            nodes.push_back(h);
-
-            cnt++;
-        }
-    }
+Config* Raft::getConfig() {
+    return this->config;
 }

@@ -1,3 +1,6 @@
+#ifndef STATE_H
+#define STATE_H
+
 enum State {
     FOLLOWER = 0,
     CANDIDATE = 1,
@@ -14,3 +17,5 @@ struct StrState : public string {
 		}
 	}
 };
+
+#endif //STATE_H
