@@ -3,7 +3,8 @@
 
 #include "raft.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -13,6 +14,7 @@ int main(int argc, char* argv[]) {
 
     Raft *raft = new Raft();
     raft->createConfig(argv[1]);
+    raft->setRaftNodesByConfig();
 
     return 0;
 }

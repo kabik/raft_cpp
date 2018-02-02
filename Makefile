@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -g -Wall -Wextra
+CFLAGS := -std=c++11 -g -Wall -Wextra -fdiagnostics-color=always
 OBJ_DIR := bin
 L := main
 RM := rm -ri
@@ -10,7 +10,7 @@ all: $(L)
 	@if [ ! -d $(OBJ_DIR) ]; \
 		then echo "mkdir -p $(OBJ_DIR)"; mkdir -p $(OBJ_DIR); \
 		fi
-	$(CC) -O $< -o $(OBJ_DIR)/$@.o
+	$(CC) $(CFLAGS) -O $< -o $(OBJ_DIR)/$@.o
 
 clean:
 	$(RM) $(OBJ_DIR)
