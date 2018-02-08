@@ -6,9 +6,9 @@
 #include <arpa/inet.h>
 
 #include "raft.h"
-#include "config.h"
-#include "state.h"
+#include "../config.h"
 #include "node/raftnode.h"
+#include "state.h"
 
 using namespace std;
 
