@@ -10,15 +10,15 @@ class RaftNode;
 
 class Raft {
 private:
-    Config *config;
-    vector<RaftNode*> raftNodes;
+	Config *config;
+	vector<RaftNode*> raftNodes;
 
 public:
-    Raft();
-    void createConfig(char* configFileName);
-    Config* getConfig();
-    void setRaftNodesByConfig();
-    vector<RaftNode*> getRaftNodes();
+	Raft();
+	void createConfig(char* configFileName);
+	Config* getConfig();
+	void setRaftNodesByConfig();
+	vector<RaftNode*> getRaftNodes();
 };
 
 #include "raft.cc"

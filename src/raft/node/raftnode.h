@@ -5,33 +5,33 @@
 
 class RaftNode : public Node {
 private:
-    int nextIndex;
-    int matchIndex;
-    int sentIndex;
-    bool isme;
-    bool votedForMe;
-    bool rvrpcSent;     // requestVoteRPC
+	int nextIndex;
+	int matchIndex;
+	int sentIndex;
+	bool isme;
+	bool votedForMe;
+	bool rvrpcSent;     // requestVoteRPC
 
 public:
-    RaftNode(string* hostname, int port);
+	RaftNode(string* hostname, int port);
 
-    int  getNextIndex();
-    void setNextIndex(int nextIndex);
+	int  getNextIndex();
+	void setNextIndex(int nextIndex);
 
-    int  getMatchIndex();
-    void setMatchIndex(int matchIndex);
+	int  getMatchIndex();
+	void setMatchIndex(int matchIndex);
 
-    int  getSentIndex();
-    void setSentIndex(int sentIndex);
+	int  getSentIndex();
+	void setSentIndex(int sentIndex);
 
-    bool isMe();
-    void setIsMe(bool isme);
+	bool isMe();
+	void setIsMe(bool isme);
 
-    bool hasVotedForMe();
-    void setVotedForMe(bool votedForMe);
+	bool hasVotedForMe();
+	void setVotedForMe(bool votedForMe);
 
-    bool IhaveSentRequestVoteRPC();
-    void setRequestVoteRPCSent(bool rvrpcSent);
+	bool IhaveSentRequestVoteRPC();
+	void setRequestVoteRPCSent(bool rvrpcSent);
 };
 
 #include "raftnode.cc"

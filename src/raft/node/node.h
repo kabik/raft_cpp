@@ -3,21 +3,21 @@
 
 class Node {
 private:
-    string* hostname;
-    int listenPort;
-    int sock;
+	string* hostname;
+	int listenPort;
+	int sock;
 
 public:
-    Node(string* hostname, int port);
+	Node(string* hostname, int port);
 
-    void send(string message);
-    string receive();
+	void send(string message);
+	string receive();
 
-    string getHostname();
-    void setHostname(string hostname);
+	string getHostname();
+	void setHostname(string hostname);
 
-    int getListenPort();
-    void setListenPort(int listenPort);
+	int getListenPort();
+	void setListenPort(int listenPort);
 };
 
 #include "node.cc"

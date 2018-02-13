@@ -2,9 +2,9 @@
 #define STATE_H
 
 enum State {
-    FOLLOWER = 0,
-    CANDIDATE = 1,
-    LEADER = 2,
+	FOLLOWER = 0,
+	CANDIDATE = 1,
+	LEADER = 2,
 };
 
 struct StrState : public string {

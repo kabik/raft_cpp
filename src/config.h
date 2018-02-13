@@ -8,22 +8,22 @@ using std::string;
 using std::vector;
 
 typedef struct _node_conf {
-    string* hostname;
-    int port;
+	string* hostname;
+	int port;
 } node_conf;
 
 class Config {
 private:
-    string configFileName;
-    int nNodes;
-    vector<node_conf* > nodes;
+	string configFileName;
+	int nNodes;
+	vector<node_conf* > nodes;
 
 public:
-    Config(char* configFileName);
-    int getNumberOfNodes();
-    void setNumberOfNodes(int nNodes);
-    vector<node_conf*> getNodes();
-    void setNodes(vector<node_conf*> nodes);
+	Config(char* configFileName);
+	int getNumberOfNodes();
+	void setNumberOfNodes(int nNodes);
+	vector<node_conf*> getNodes();
+	void setNodes(vector<node_conf*> nodes);
 };
 
 #include "config.cc"
