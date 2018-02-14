@@ -9,6 +9,7 @@ void Node::send(string message) {
 }
 
 string Node::receive() {
+	return "string";
 }
 
 string Node::getHostname() {
