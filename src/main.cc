@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <iostream>
-
+#include <memory>
 #include "raft/raft.h"
 
 using std::cout;
@@ -12,9 +12,10 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	Raft *raft = new Raft();
-	raft->createConfig(argv[1]);
-	raft->setRaftNodesByConfig();
-
+	if (auto raft = std::make_shared<Raft>())
+	{
+		raft->createConfig(argv[1]);
+		raft->setRaftNodesByConfig();
+	}
 	return 0;
 }
