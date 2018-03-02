@@ -16,7 +16,9 @@ private:
 
 public:
 	Raft();
-	void run();
+	void receive();
+	void listenTCP();
+	void connectOtherRaftNodes();
 	void createConfig(char* configFileName);
 	Config* getConfig();
 	void setRaftNodesByConfig();

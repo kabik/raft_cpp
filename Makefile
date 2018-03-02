@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -std=c++11 -g -Wall -Wextra -fdiagnostics-color=always
+CFLAGS := -std=c++11 -pthread -g -Wall -Wextra -fdiagnostics-color=always
 OBJ_DIR := bin
 L := main
 RM := rm -ri

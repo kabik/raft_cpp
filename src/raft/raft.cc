@@ -18,7 +18,37 @@ using std::endl;
 
 Raft::Raft() {}
 
-void Raft::run() {
+void Raft::receive() {
+	fd_set fds, readfds;
+	char buf[2048];
+
+	FD_ZERO(&readfds);
+
+	int maxfd = 0;
+	for (RaftNode* rNode : this->getRaftNodes()) {
+		if (!rNode->isMe()) {
+			if (rNode->getSock() > maxfd) {
+				maxfd = rNode->getSock();
+			}
+			FD_SET(rNode->getSock(), &readfds);
+		}
+	}
+
+	while(1) {
+		memcpy(&fds, &readfds, sizeof(fd_set));
+		select(maxfd+1, &fds, NULL, NULL, NULL);
+		for (RaftNode* rNode : this->getRaftNodes()) {
+			int sock = rNode->getSock();
+			if (FD_ISSET(sock, &fds)) {
+				memset(buf, 0, sizeof(buf));
+				recv(sock, buf, sizeof(buf), 0);
+				printf("%s\n", buf);
+			}
+		}
+	}
+}
+
+void Raft::listenTCP() {
 	int listenSocket;
 	struct sockaddr_in addr;
 	struct sockaddr_in client;
@@ -42,7 +72,8 @@ void Raft::run() {
 		len = sizeof(client);
 		sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len);
 		for (RaftNode* rNode : this->getRaftNodes()) {
-			if (inet_ntoa(client.sin_addr) == rNode->getHostname()) {
+			if (inet_ntoa(client.sin_addr) == rNode->getHostname() &&
+				rNode->getSock() == 0) {
 				rNode->setSock(sock);
 			}
 		}
@@ -50,6 +81,37 @@ void Raft::run() {
 
 	close(listenSocket);
 }
+
+void Raft::connectOtherRaftNodes() {
+	for (RaftNode* rNode : this->getRaftNodes()) {
+		if (!rNode->isMe() && rNode->getSock() == 0) {
+			struct sockaddr_in server;
+			int sock;
+			//char buf[32];
+			//int n;
+
+			sock = socket(AF_INET, SOCK_STREAM, 0);
+
+			server.sin_family = AF_INET;
+			server.sin_port = htons(rNode->getListenPort());
+			server.sin_addr.s_addr = inet_addr(rNode->getHostname().c_str());
+
+			cout << "Connecting to " << rNode->getHostname() << ":" << rNode->getListenPort() << endl;
+
+			connect(sock, (struct sockaddr *)&server, sizeof(server));
+
+			rNode->setSock(sock);
+
+			/*
+			memset(buf, 0, sizeof(buf));
+			n = read(sock, buf, sizeof(buf));
+
+			printf("%d, %s\n", n, buf);
+			*/
+		}
+	}
+}
+
 
 void Raft::createConfig(char* configFileName) {
 	this->config = new Config(configFileName);
