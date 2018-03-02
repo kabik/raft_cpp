@@ -18,6 +18,9 @@ public:
 
 	int getListenPort();
 	void setListenPort(int listenPort);
+
+	int getSock();
+	void setSock(int sock);
 };
 
 #include "node.cc"

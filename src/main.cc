@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
 	Raft *raft = new Raft();
 	raft->createConfig(argv[1]);
 	raft->setRaftNodesByConfig();
+	raft->run();
 
 	return 0;
 }

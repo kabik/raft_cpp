@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ifaddrs.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -10,9 +12,44 @@
 #include "node/raftnode.h"
 #include "state.h"
 
-using namespace std;
+using std::cout;
+using std::cerr;
+using std::endl;
 
 Raft::Raft() {}
+
+void Raft::run() {
+	int listenSocket;
+	struct sockaddr_in addr;
+	struct sockaddr_in client;
+	int len;
+	int sock;
+
+	listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+	int listenPort = this->getMe()->getListenPort();
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(listenPort);
+	addr.sin_addr.s_addr = INADDR_ANY;
+	bind(listenSocket, (struct sockaddr*)&addr, sizeof(addr));
+
+	cout << "Listening in Port " << listenPort << "." << endl;
+
+	while (1) {
+		listen(listenSocket, 10);
+
+		len = sizeof(client);
+		sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len);
+		for (RaftNode* rNode : this->getRaftNodes()) {
+			if (inet_ntoa(client.sin_addr) == rNode->getHostname()) {
+				rNode->setSock(sock);
+			}
+		}
+	}
+
+	close(listenSocket);
+}
 
 void Raft::createConfig(char* configFileName) {
 	this->config = new Config(configFileName);
@@ -49,6 +86,7 @@ void Raft::setRaftNodesByConfig() {
 			for (RaftNode* rNode : this->raftNodes) {
 				if (strcmp(rNode->getHostname().c_str(), addrstr) == 0) {
 					rNode->setIsMe(true);
+					this->setMe(rNode);
 				}
 			}
 		}
@@ -64,4 +102,12 @@ void Raft::setRaftNodesByConfig() {
 
 vector<RaftNode*> Raft::getRaftNodes() {
 	return this->raftNodes;
+}
+
+void Raft::setMe(RaftNode* raftNode) {
+	this->me = raftNode;
+}
+
+RaftNode* Raft::getMe() {
+	return this->me;
 }
