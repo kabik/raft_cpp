@@ -39,10 +39,10 @@ void Raft::receive() {
 		select(maxfd+1, &fds, NULL, NULL, NULL);
 		for (RaftNode* rNode : this->getRaftNodes()) {
 			int sock = rNode->getSock();
-			if (FD_ISSET(sock, &fds)) {
+			if (!rNode->isMe() && FD_ISSET(sock, &fds)) {
 				memset(buf, 0, sizeof(buf));
 				recv(sock, buf, sizeof(buf), 0);
-				printf("%s\n", buf);
+				printf("%s: %s\n", rNode->getHostname().c_str(), buf);
 			}
 		}
 	}
@@ -87,8 +87,6 @@ void Raft::connectOtherRaftNodes() {
 		if (!rNode->isMe() && rNode->getSock() == 0) {
 			struct sockaddr_in server;
 			int sock;
-			//char buf[32];
-			//int n;
 
 			sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -101,13 +99,6 @@ void Raft::connectOtherRaftNodes() {
 			connect(sock, (struct sockaddr *)&server, sizeof(server));
 
 			rNode->setSock(sock);
-
-			/*
-			memset(buf, 0, sizeof(buf));
-			n = read(sock, buf, sizeof(buf));
-
-			printf("%d, %s\n", n, buf);
-			*/
 		}
 	}
 }

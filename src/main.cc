@@ -26,6 +26,13 @@ int main(int argc, char* argv[]) {
 
 	auto receiveThread = thread([&raft]{ raft->receive(); });
 
+	while (1) {
+		sleep_for(chrono::milliseconds(1000));
+		for (RaftNode* rNode : raft->getRaftNodes()) {
+			write(rNode->getSock(), raft->getMe()->getHostname().c_str(), 30);
+		}
+	}
+
 	receiveThread.join();
 	listenThread.join();
 
