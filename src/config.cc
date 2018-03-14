@@ -5,22 +5,37 @@
 #include "config.h"
 #include "functions.cc"
 
-using namespace std;
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::ifstream;
 
 Config::Config(char* configFileName) {
-	this->configFileName = configFileName;
+	this->configFileName = new string(configFileName);
+	cout << "Config file is \"" << *this->configFileName << "\"." << endl;
 
-	cout << "Config file is \"" << configFileName << "\"." << endl;
-
+	// open an input file stream
 	ifstream ifs(configFileName);
-
 	if (!ifs) {
 		cerr << "File \"" << configFileName << "\" cannot be opened." << endl;
 		exit(1);
 	}
 
-	int cnt = 0;
 	string str;
+
+	// load a path to directory to save log, currentTerm and votedFor
+	bool loaded = false;
+	while (!loaded) {
+		getline(ifs, str);
+		if (!str.empty()) {
+			this->setStorageDirectoryName(str);
+			loaded = true;
+		}
+	}
+	cout << "The directory to save log and so on is \"" << this->getStorageDirectoryName() << "\"." << endl;
+
+	// load information of cluster nodes
+	int cnt = 0;
 	while (getline(ifs, str)) {
 		if (!str.empty()) {
 			vector<string> strs = split(str, ':');
@@ -34,14 +49,21 @@ Config::Config(char* configFileName) {
 		}
 	}
 	ifs.close();
-
 	this->setNumberOfNodes(cnt);
 
+	// output
 	cout << "Config file is loaded." << endl;
 	cout << "Number of nodes is " << this->getNumberOfNodes() << "." << endl;
 	for (node_conf* n : this->nodes) {
 		cout << "   " << *n->hostname << ":" << n->port << endl;
 	}
+}
+
+string Config::getStorageDirectoryName() {
+	return *this->storageDirectoryName;
+}
+void Config::setStorageDirectoryName(string storageDirectoryName) {
+	this->storageDirectoryName = new string(storageDirectoryName);
 }
 
 int Config::getNumberOfNodes() {

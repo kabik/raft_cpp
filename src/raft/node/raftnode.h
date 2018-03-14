@@ -5,6 +5,7 @@
 
 class RaftNode : public Node {
 private:
+	int id;
 	int nextIndex;
 	int matchIndex;
 	int sentIndex;
@@ -14,6 +15,9 @@ private:
 
 public:
 	RaftNode(string* hostname, int port);
+
+	int getID();
+	void setID(int id);
 
 	int  getNextIndex();
 	void setNextIndex(int nextIndex);

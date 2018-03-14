@@ -16,20 +16,19 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	Raft *raft = new Raft();
-	raft->createConfig(argv[1]);
-	raft->setRaftNodesByConfig();
+	Raft *raft = new Raft(argv[1]);
 
 	auto listenThread = thread([&raft]{ raft->listenTCP(); });
-	sleep_for(chrono::milliseconds(1000));
+	sleep_for(milliseconds(1000));
 	raft->connectOtherRaftNodes();
 
 	auto receiveThread = thread([&raft]{ raft->receive(); });
 
+	// test
 	while (1) {
-		sleep_for(chrono::milliseconds(1000));
+		sleep_for(milliseconds(1000));
 		for (RaftNode* rNode : raft->getRaftNodes()) {
-			write(rNode->getSock(), raft->getMe()->getHostname().c_str(), 30);
+			write(rNode->getSock(), raft->getRaftNodes()[raft->getMe()]->getHostname().c_str(), 30);
 		}
 	}
 

@@ -9,6 +9,7 @@
 
 #include "raft.h"
 #include "../config.h"
+#include "status/status.h"
 #include "node/raftnode.h"
 #include "state.h"
 
@@ -16,7 +17,11 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-Raft::Raft() {}
+Raft::Raft(char* configFileName) {
+	this->config = new Config(configFileName);
+	this->setRaftNodesByConfig();
+	this->status = new Status(this->getConfig()->getStorageDirectoryName());
+}
 
 void Raft::receive() {
 	fd_set fds, readfds;
@@ -57,7 +62,7 @@ void Raft::listenTCP() {
 
 	listenSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-	int listenPort = this->getMe()->getListenPort();
+	int listenPort = this->getRaftNodes()[this->getMe()]->getListenPort();
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(listenPort);
@@ -103,19 +108,17 @@ void Raft::connectOtherRaftNodes() {
 	}
 }
 
-
-void Raft::createConfig(char* configFileName) {
-	this->config = new Config(configFileName);
-}
-
 Config* Raft::getConfig() {
 	return this->config;
 }
 
 void Raft::setRaftNodesByConfig() {
+	int cnt = 0;
 	for (node_conf* nconf : this->config->getNodes()) {
 		RaftNode* rNode = new RaftNode(nconf->hostname, nconf->port);
+		rNode->setID(cnt);
 		this->raftNodes.push_back(rNode);
+		cnt++;
 	}
 
 	struct ifaddrs* ifa_list;
@@ -139,14 +142,14 @@ void Raft::setRaftNodesByConfig() {
 			for (RaftNode* rNode : this->raftNodes) {
 				if (strcmp(rNode->getHostname().c_str(), addrstr) == 0) {
 					rNode->setIsMe(true);
-					this->setMe(rNode);
+					this->setMe(rNode->getID());
 				}
 			}
 		}
 	}
 	for (RaftNode* rNode : this->raftNodes) {
 		if (rNode->isMe()) {
-			cout << "I am " << rNode->getHostname() << ":" << rNode->getListenPort() << "." << endl;
+			cout << "I am \"" << rNode->getHostname() << ":" << rNode->getListenPort() << "\"." << endl;
 		}
 	}
 
@@ -157,10 +160,9 @@ vector<RaftNode*> Raft::getRaftNodes() {
 	return this->raftNodes;
 }
 
-void Raft::setMe(RaftNode* raftNode) {
-	this->me = raftNode;
+void Raft::setMe(int me) {
+	this->me = me;
 }
-
-RaftNode* Raft::getMe() {
+int Raft::getMe() {
 	return this->me;
 }
