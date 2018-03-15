@@ -8,6 +8,8 @@
 
 using std::cout;
 using std::endl;
+using std::stoi;
+using std::to_string;
 
 Status::Status(string storageDirectoryName) {
 	this->storageDirectoryName = new string(storageDirectoryName);
@@ -40,4 +42,33 @@ void Status::createDirectory() {
 
 string Status::getStorageDirectoryName() {
 	return *this->storageDirectoryName;
+}
+
+int Status::getCurrentTerm() {
+	return stoi(this->currentTerm->getValue());
+}
+void Status::incrementCurrentTerm() {
+	int cTerm = stoi(this->currentTerm->getValue());
+	this->currentTerm->setValue(to_string(cTerm+1));
+}
+
+int Status::getVotedFor() {
+	stoi(this->votedFor->getValue());
+}
+void Status::setVotedFor(int node_id) {
+	this->votedFor->setValue(to_string(node_id));
+}
+
+int Status::getCommitIndex() {
+	return this->commitIndex;
+}
+void Status::setCommitIndex(int commitIndex) {
+	this->commitIndex = commitIndex;
+}
+
+int Status::getLastApplied() {
+	return this->lastApplied;
+}
+void Status::setLastApplied(int lastApplied) {
+	this->lastApplied = lastApplied;
 }
