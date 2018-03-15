@@ -16,8 +16,16 @@ ifstream* FileHandler::getIFStream() {
 	return this->_ifs;
 }
 
-ofstream* FileHandler::getOFStream() {
-	this->_ofs = new ofstream(this->getFileName().c_str());
+ofstream* FileHandler::getOFStream(bool append_mode) {
+	cout << "_ofs : " << this->_ofs << endl;
+	if (this->_ofs || this->_append_mode != append_mode) {
+		if (append_mode) {
+			this->_ofs = new ofstream(this->getFileName().c_str(), std::ios::app);
+		} else {
+			this->_ofs = new ofstream(this->getFileName().c_str());
+		}
+	}
+	this->_append_mode = append_mode;
 	return this->_ofs;
 }
 

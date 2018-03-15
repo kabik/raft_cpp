@@ -10,9 +10,10 @@ SavedValue::SavedValue(string name, string fileName) : FileHandler(fileName) {
 	const int n = 16;
 	char str[n];
 	this->getIFStream()->getline(str, n);
+	this->closeIFStream();
 
-	this->setName(name);
-	this->setValue(str);
+	this->_name = new string(name);
+	this->_value = new string(str);
 }
 
 string SavedValue::getName() {
@@ -27,6 +28,6 @@ string SavedValue::getValue() {
 }
 void SavedValue::setValue(string value) {
 	this->_value = new string(value);
-	auto out = getOFStream();
+	auto out = this->getOFStream(false);
 	*out << value << endl;
 }

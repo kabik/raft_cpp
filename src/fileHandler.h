@@ -9,12 +9,13 @@ private:
 	string* _fileName;
 	ifstream* _ifs;
 	ofstream* _ofs;
+	bool _append_mode;
 
 public:
 	FileHandler(string fileName);
 
 	ifstream* getIFStream();
-	ofstream* getOFStream();
+	ofstream* getOFStream(bool append_mode);
 	void closeIFStream();
 	void closeOFStream();
 	string getFileName();
