@@ -6,37 +6,37 @@
 #include "constant.h"
 
 enum RPCKind {
-	RPC_KIND_APPEND_ENTRIES				= 0,
-	RPC_KIND_REQUEST_VOTE				= 1,
-	RPC_KIND_RESPONSE_APPEND_ENTRIES	= 2,
-	RPC_KIND_RESPONSE_REQUEST_VOTE		= 3,
+	RPC_KIND_APPEND_ENTRIES           = 0,
+	RPC_KIND_REQUEST_VOTE             = 1,
+	RPC_KIND_RESPONSE_APPEND_ENTRIES  = 2,
+	RPC_KIND_RESPONSE_REQUEST_VOTE    = 3,
 };
 
 struct StrRPCKind : public std::string {
 	StrRPCKind(RPCKind r) {
 		switch(r) {
-		break; case RPC_KIND_APPEND_ENTRIES			: { assign("RPC_KIND_APPEND_ENTRIES"			); }
-		break; case RPC_KIND_REQUEST_VOTE			: { assign("RPC_KIND_REQUEST_VOTE"				); }
-		break; case RPC_KIND_RESPONSE_APPEND_ENTRIES: { assign("RPC_KIND_RESPONSE_APPEND_ENTRIES"	); }
-		break; case RPC_KIND_RESPONSE_REQUEST_VOTE	: { assign("RPC_KIND_RESPONSE_REQUEST_VOTE"		); }
-		break; default								: { assign("illegal rpc kind"					); }
+		break; case RPC_KIND_APPEND_ENTRIES          : { assign("RPC_KIND_APPEND_ENTRIES"         ); }
+		break; case RPC_KIND_REQUEST_VOTE            : { assign("RPC_KIND_REQUEST_VOTE"           ); }
+		break; case RPC_KIND_RESPONSE_APPEND_ENTRIES : { assign("RPC_KIND_RESPONSE_APPEND_ENTRIES"); }
+		break; case RPC_KIND_RESPONSE_REQUEST_VOTE   : { assign("RPC_KIND_RESPONSE_REQUEST_VOTE"  ); }
+		break; default                               : { assign("illegal rpc kind"                ); }
 		}
 	}
 };
 
 typedef struct _append_entries_rpc {
 	RPCKind rpcKind;
-	int term;			// leader's term
+	int term;         // leader's term
 	int leaderId;
 	int prevLogIndex;
 	int prevLogTerm;
-	int leaderCommit;	// leader's commitIndex
+	int leaderCommit; // leader's commitIndex
 	char entries[ENTRIES_STR_LENGTH];
 } append_entries_rpc;
 
 typedef struct _request_vote_rpc {
 	RPCKind rpcKind;
-	int term;			// candidate's term
+	int term;         // candidate's term
 	int candidateId;
 	int lastLogIndex;
 	int lastLogTerm;
@@ -72,12 +72,12 @@ void arpcByFields(
 	int leaderCommit,
 	char entries[ENTRIES_STR_LENGTH]
 ) {
-	arpc->rpcKind 		= RPC_KIND_APPEND_ENTRIES;
-	arpc->term			= term;
-	arpc->leaderId		= leaderId;
-	arpc->prevLogIndex	= prevLogIndex;
-	arpc->prevLogTerm	= prevLogTerm;
-	arpc->leaderCommit	= leaderCommit;
+	arpc->rpcKind       = RPC_KIND_APPEND_ENTRIES;
+	arpc->term          = term;
+	arpc->leaderId      = leaderId;
+	arpc->prevLogIndex  = prevLogIndex;
+	arpc->prevLogTerm   = prevLogTerm;
+	arpc->leaderCommit  = leaderCommit;
 	memcpy(arpc->entries, entries, ENTRIES_STR_LENGTH);
 }
 
@@ -89,11 +89,11 @@ void rrpcByFields(
 	int lastLogIndex,
 	int lastLogTerm
 ) {
-	rrpc->rpcKind 		= RPC_KIND_REQUEST_VOTE;
-	rrpc->term			= term;
-	rrpc->candidateId	= candidateId;
-	rrpc->lastLogIndex	= lastLogIndex;
-	rrpc->lastLogTerm	= lastLogTerm;
+	rrpc->rpcKind       = RPC_KIND_REQUEST_VOTE;
+	rrpc->term          = term;
+	rrpc->candidateId   = candidateId;
+	rrpc->lastLogIndex  = lastLogIndex;
+	rrpc->lastLogTerm   = lastLogTerm;
 }
 
 // create response_append_entries by fields
@@ -103,7 +103,7 @@ void raeByFields(
 	bool success
 ) {
 	rae->rpcKind = RPC_KIND_RESPONSE_APPEND_ENTRIES;
-	rae->term	 = term;
+	rae->term    = term;
 	rae->success = success;
 }
 
@@ -114,7 +114,7 @@ void rrvByFields(
 	bool success
 ) {
 	rrv->rpcKind = RPC_KIND_RESPONSE_REQUEST_VOTE;
-	rrv->term	 = term;
+	rrv->term    = term;
 	rrv->success = success;
 }
 

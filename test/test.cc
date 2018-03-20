@@ -16,14 +16,14 @@ int main() {
 	arpcByFields(arpc, 1, 2, 3, 4, 5, "put,x,2,put,y,3");
 	cout
 		<< "-------" << endl
-		<< STR(sarpc)				<< " = \"" << sarpc << "\"" << endl
-		<< STR(arpc->rpcKind)		<< " = " << StrRPCKind(arpc->rpcKind)	<< endl
-		<< STR(arpc->term)			<< " = " << arpc->term					<< endl
-		<< STR(arpc->leaderId)		<< " = " << arpc->leaderId				<< endl
-		<< STR(arpc->prevLogIndex)	<< " = " << arpc->prevLogIndex			<< endl
-		<< STR(arpc->prevLogTerm)	<< " = " << arpc->prevLogTerm			<< endl
-		<< STR(arpc->leaderCommit)	<< " = " << arpc->leaderCommit			<< endl
-		<< STR(arpc->entries)		<< " = " << arpc->entries				<< endl;
+		<< STR(sarpc)              << " = \"" << sarpc << "\"" << endl
+		<< STR(arpc->rpcKind)      << " = " << StrRPCKind(arpc->rpcKind) << endl
+		<< STR(arpc->term)         << " = " << arpc->term                << endl
+		<< STR(arpc->leaderId)     << " = " << arpc->leaderId            << endl
+		<< STR(arpc->prevLogIndex) << " = " << arpc->prevLogIndex        << endl
+		<< STR(arpc->prevLogTerm)  << " = " << arpc->prevLogTerm         << endl
+		<< STR(arpc->leaderCommit) << " = " << arpc->leaderCommit        << endl
+		<< STR(arpc->entries)      << " = " << arpc->entries             << endl;
 	char sarpc2[APPEND_ENTRIES_RPC_LENGTH];
 	arpc2str(arpc, sarpc2);
 	cout << STR(sarpc2)	<< " = \"" << sarpc2 << "\"" << endl;
@@ -36,12 +36,12 @@ int main() {
 	rrpcByFields(rrpc, 1, 2, 3, 4);
 	cout
 		<< "-------" << endl
-		<< STR(srrpc)				<< " = \"" << srrpc << "\"" << endl
-		<< STR(rrpc->rpcKind)		<< " = " << StrRPCKind(rrpc->rpcKind)	<< endl
-		<< STR(rrpc->term)			<< " = " << rrpc->term					<< endl
-		<< STR(rrpc->candidateId)	<< " = " << rrpc->candidateId			<< endl
-		<< STR(rrpc->lastLogIndex)	<< " = " << rrpc->lastLogIndex			<< endl
-		<< STR(rrpc->lastLogTerm)	<< " = " << rrpc->lastLogTerm			<< endl;
+		<< STR(srrpc)              << " = \"" << srrpc << "\"" << endl
+		<< STR(rrpc->rpcKind)      << " = " << StrRPCKind(rrpc->rpcKind) << endl
+		<< STR(rrpc->term)         << " = " << rrpc->term                << endl
+		<< STR(rrpc->candidateId)  << " = " << rrpc->candidateId         << endl
+		<< STR(rrpc->lastLogIndex) << " = " << rrpc->lastLogIndex        << endl
+		<< STR(rrpc->lastLogTerm)  << " = " << rrpc->lastLogTerm         << endl;
 	char srrpc2[REQUEST_VOTE_RPC_LENGTH];
 	rrpc2str(rrpc, srrpc2);
 	cout << STR(srrpc2)	<< " = \"" << srrpc2 << "\"" << endl;
@@ -54,10 +54,10 @@ int main() {
 	raeByFields(rae, 1, 1);
 	cout
 		<< "-------" << endl
-		<< STR(srae)				<< " = \"" << srae << "\"" << endl
-		<< STR(rae->rpcKind) << " = " << StrRPCKind(rae->rpcKind)	<< endl
-		<< STR(rae->term)    << " = " << rae->term					<< endl
-		<< STR(rae->success) << " = " << rae->success				<< endl;
+		<< STR(srae)         << " = \"" << srae << "\"" << endl
+		<< STR(rae->rpcKind) << " = " << StrRPCKind(rae->rpcKind)   << endl
+		<< STR(rae->term)    << " = " << rae->term                  << endl
+		<< STR(rae->success) << " = " << rae->success               << endl;
 	char srae2[RESPONSE_APPEND_ENTRIES_LENGTH];
 	rae2str(rae, srae2);
 	cout << STR(srae2)	<< " = \"" << srae2 << "\"" << endl;
@@ -70,10 +70,10 @@ int main() {
 	rrvByFields(rrv, 1, 1);
 	cout
 		<< "-------" << endl
-		<< STR(srrv)				<< " = \"" << srrv << "\"" << endl
-		<< STR(rrv->rpcKind) << " = " << StrRPCKind(rrv->rpcKind)	<< endl
-		<< STR(rrv->term)    << " = " << rrv->term					<< endl
-		<< STR(rrv->success) << " = " << rrv->success				<< endl;
+		<< STR(srrv)         << " = \"" << srrv << "\"" << endl
+		<< STR(rrv->rpcKind) << " = " << StrRPCKind(rrv->rpcKind) << endl
+		<< STR(rrv->term)    << " = " << rrv->term                << endl
+		<< STR(rrv->success) << " = " << rrv->success             << endl;
 	char srrv2[RESPONSE_REQUEST_VOTE_LENGTH];
 	rrv2str(rrv, srrv2);
 	cout << STR(srrv2)	<< " = \"" << srrv2 << "\"" << endl;
