@@ -21,7 +21,7 @@ public:
 	int lastLogIndex();
 	int lastLogTerm();
 	entry get(int index);
-	void add(int term, string command);
+	void add(int term, char command[COMMAND_STR_LENGTH]);
 };
 
 #include "log.cc"

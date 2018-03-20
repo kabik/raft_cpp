@@ -12,6 +12,7 @@
 #include "status/status.h"
 #include "node/raftnode.h"
 #include "state.h"
+#include "constant.h"
 
 using std::cout;
 using std::cerr;
@@ -47,7 +48,9 @@ void Raft::receive() {
 			if (!rNode->isMe() && FD_ISSET(sock, &fds)) {
 				memset(buf, 0, sizeof(buf));
 				recv(sock, buf, sizeof(buf), 0);
-				printf("%s: %s\n", rNode->getHostname().c_str(), buf);
+				if (buf[0] != 0) {
+					printf("sock=%d %s: [%s]\n", sock, rNode->getHostname().c_str(), buf);
+				}
 			}
 		}
 	}

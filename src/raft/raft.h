@@ -23,10 +23,7 @@ public:
 	void listenTCP();
 	void connectOtherRaftNodes();
 
-	//void createConfig(char* configFileName);
 	Config* getConfig();
-
-	//void setStatus(Status* status);
 	Status* getStatus();
 
 	void setRaftNodesByConfig();

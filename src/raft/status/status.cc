@@ -53,7 +53,7 @@ void Status::incrementCurrentTerm() {
 }
 
 int Status::getVotedFor() {
-	stoi(this->votedFor->getValue());
+	return stoi(this->votedFor->getValue());
 }
 void Status::setVotedFor(int node_id) {
 	this->votedFor->setValue(to_string(node_id));

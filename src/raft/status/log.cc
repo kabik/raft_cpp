@@ -24,13 +24,15 @@ entry Log::get(int index) {
 	return *this->_log[index];
 }
 
-void Log::add(int term, string command) {
+void Log::add(int term, char command[COMMAND_STR_LENGTH]) {
 	entry* e = (entry*)malloc(sizeof(entry));
 	e->term = term;
-	e->command = new string(command);
+	memcpy(command, e->command, COMMAND_STR_LENGTH);
+	char str[COMMAND_STR_LENGTH];
+	entry2str(e, str);
 
 	auto out = this->getOFStream(true);
-	*out << *entry2str(e) << endl;
+	*out << str << endl;
 
 	this->_log.push_back(e);
 }

@@ -4,6 +4,8 @@
 
 #include "raft/raft.h"
 
+#include "raft/rpc.cc"
+
 using std::cout;
 using std::endl;
 using std::thread;
@@ -28,7 +30,9 @@ int main(int argc, char* argv[]) {
 	while (1) {
 		sleep_for(milliseconds(1000));
 		for (RaftNode* rNode : raft->getRaftNodes()) {
-			write(rNode->getSock(), raft->getRaftNodes()[raft->getMe()]->getHostname().c_str(), 30);
+			if (!rNode->isMe()) {
+				write(rNode->getSock(), raft->getRaftNodes()[raft->getMe()]->getHostname().c_str(), 30);
+			}
 		}
 	}
 

@@ -11,11 +11,16 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#define STR(var) #var
+
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::string;
+using std::vector;
 using std::stringstream;
 
+// devide a string by a certain letter
 vector<string> split(const string &s, char delim) {
 	vector<string> elems;
 	stringstream ss(s);
