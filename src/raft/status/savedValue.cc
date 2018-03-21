@@ -30,4 +30,5 @@ void SavedValue::setValue(string value) {
 	this->_value = new string(value);
 	auto out = this->getOFStream(false);
 	*out << value << endl;
+	this->closeOFStream();
 }
