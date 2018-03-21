@@ -1,6 +1,8 @@
 #ifndef STATUS_H
 #define STATUS_H
 
+#include "../state.h"
+
 using std::string;
 
 class SavedValue;
@@ -10,10 +12,12 @@ class Status {
 private:
 	string* storageDirectoryName;
 	Log* log;
+	State state;
 	SavedValue* currentTerm;
 	SavedValue* votedFor;
 	int commitIndex;
 	int lastApplied;
+	int timeouttime;
 
 	void createDirectory();
 
@@ -22,17 +26,31 @@ public:
 
 	string getStorageDirectoryName();
 
-	int getCurrentTerm();
+	Log* getLog();
+
+	State getState();
+	void  setState(State state);
+	bool isFollower();
+	bool isCandidate();
+	bool isLeader();
+	void becomeFollower();
+	void becomeCandidate();
+	void becomeLeader();
+
+	int  getCurrentTerm();
 	void incrementCurrentTerm();
 
-	int getVotedFor();
+	int  getVotedFor();
 	void setVotedFor(int node_id);
 
-	int getCommitIndex();
+	int  getCommitIndex();
 	void setCommitIndex(int commitIndex);
 
-	int getLastApplied();
+	int  getLastApplied();
 	void setLastApplied(int lastApplied);
+
+	int  getTimeoutTime();
+	void setTimeoutTime(int timeouttime);
 };
 
 #include "status.cc"

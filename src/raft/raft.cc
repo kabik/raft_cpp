@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <chrono>
 
 #include "raft.h"
 #include "../config.h"
@@ -13,15 +14,26 @@
 #include "node/raftnode.h"
 #include "state.h"
 #include "constant.h"
+#include "rpc.cc"
+#include "../functions.cc"
 
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::this_thread::sleep_for;
+using std::chrono::milliseconds;
+using std::chrono::microseconds;
+using std::chrono::high_resolution_clock;
+using std::chrono::duration_cast;
 
 Raft::Raft(char* configFileName) {
 	this->config = new Config(configFileName);
+	this->raftNodes = new vector<RaftNode*>;
 	this->setRaftNodesByConfig();
+
 	this->status = new Status(this->getConfig()->getStorageDirectoryName());
+	this->status->setState(FOLLOWER);
+	this->resetTimeoutTime();
 }
 
 void Raft::receive() {
@@ -31,7 +43,7 @@ void Raft::receive() {
 	FD_ZERO(&readfds);
 
 	int maxfd = 0;
-	for (RaftNode* rNode : this->getRaftNodes()) {
+	for (RaftNode* rNode : *this->getRaftNodes()) {
 		if (!rNode->isMe()) {
 			if (rNode->getSock() > maxfd) {
 				maxfd = rNode->getSock();
@@ -43,7 +55,7 @@ void Raft::receive() {
 	while(1) {
 		memcpy(&fds, &readfds, sizeof(fd_set));
 		select(maxfd+1, &fds, NULL, NULL, NULL);
-		for (RaftNode* rNode : this->getRaftNodes()) {
+		for (RaftNode* rNode : *this->getRaftNodes()) {
 			int sock = rNode->getSock();
 			if (!rNode->isMe() && FD_ISSET(sock, &fds)) {
 				memset(buf, 0, sizeof(buf));
@@ -52,6 +64,26 @@ void Raft::receive() {
 					printf("sock=%d %s: [%s]\n", sock, rNode->getHostname().c_str(), buf);
 				}
 			}
+		}
+	}
+}
+
+void Raft::timer() {
+	this->resetStartTime();
+
+	while(1) {
+		sleep_for(milliseconds(100));
+
+		cout << this->getDuration().count() << " " << isTimeout()
+			<< " State = " << StrState(this->getStatus()->getState()) << endl;
+
+		if (this->isTimeout()) {
+			this->resetStartTime();
+			if (this->getStatus()->isFollower()) {
+				candidacy();
+			}
+		} else {
+
 		}
 	}
 }
@@ -65,7 +97,7 @@ void Raft::listenTCP() {
 
 	listenSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-	int listenPort = this->getRaftNodes()[this->getMe()]->getListenPort();
+	int listenPort = this->getRaftNodeById(this->getMe())->getListenPort();
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(listenPort);
@@ -79,7 +111,7 @@ void Raft::listenTCP() {
 
 		len = sizeof(client);
 		sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len);
-		for (RaftNode* rNode : this->getRaftNodes()) {
+		for (RaftNode* rNode : *this->getRaftNodes()) {
 			if (inet_ntoa(client.sin_addr) == rNode->getHostname() &&
 				rNode->getSock() == 0) {
 				rNode->setSock(sock);
@@ -91,7 +123,7 @@ void Raft::listenTCP() {
 }
 
 void Raft::connectOtherRaftNodes() {
-	for (RaftNode* rNode : this->getRaftNodes()) {
+	for (RaftNode* rNode : *this->getRaftNodes()) {
 		if (!rNode->isMe() && rNode->getSock() == 0) {
 			struct sockaddr_in server;
 			int sock;
@@ -111,8 +143,26 @@ void Raft::connectOtherRaftNodes() {
 	}
 }
 
+void Raft::resetTimeoutTime() {
+	int tt = myrand(MIN_TIMEOUTTIME_MICROSECONDS, MAX_TIMEOUTTIME_MICROSECONDS);
+	this->status->setTimeoutTime(tt);
+}
+
+bool Raft::isTimeout() {
+	return this->getDuration().count() > this->getStatus()->getTimeoutTime();
+}
+microseconds Raft::getDuration() {
+	return duration_cast<microseconds>(high_resolution_clock::now() - this->startTime);
+}
+void Raft::resetStartTime() {
+	this->startTime = high_resolution_clock::now();
+}
+
 Config* Raft::getConfig() {
 	return this->config;
+}
+Status* Raft::getStatus() {
+	return this->status;
 }
 
 void Raft::setRaftNodesByConfig() {
@@ -120,7 +170,7 @@ void Raft::setRaftNodesByConfig() {
 	for (node_conf* nconf : this->config->getNodes()) {
 		RaftNode* rNode = new RaftNode(nconf->hostname, nconf->port);
 		rNode->setID(cnt);
-		this->raftNodes.push_back(rNode);
+		this->raftNodes->push_back(rNode);
 		cnt++;
 	}
 
@@ -142,7 +192,7 @@ void Raft::setRaftNodesByConfig() {
 			inet_ntop(AF_INET,
 				&((struct sockaddr_in*)ifa->ifa_addr)->sin_addr,
 				addrstr, sizeof(addrstr));
-			for (RaftNode* rNode : this->raftNodes) {
+			for (RaftNode* rNode : *this->getRaftNodes()) {
 				if (strcmp(rNode->getHostname().c_str(), addrstr) == 0) {
 					rNode->setIsMe(true);
 					this->setMe(rNode->getID());
@@ -150,7 +200,7 @@ void Raft::setRaftNodesByConfig() {
 			}
 		}
 	}
-	for (RaftNode* rNode : this->raftNodes) {
+	for (RaftNode* rNode : *this->getRaftNodes()) {
 		if (rNode->isMe()) {
 			cout << "I am \"" << rNode->getHostname() << ":" << rNode->getListenPort() << "\"." << endl;
 		}
@@ -159,8 +209,11 @@ void Raft::setRaftNodesByConfig() {
 	freeifaddrs(ifa_list);
 }
 
-vector<RaftNode*> Raft::getRaftNodes() {
+vector<RaftNode*>* Raft::getRaftNodes() {
 	return this->raftNodes;
+}
+RaftNode* Raft::getRaftNodeById(int id) {
+	return (*this->raftNodes)[id];
 }
 
 void Raft::setMe(int me) {
@@ -168,4 +221,33 @@ void Raft::setMe(int me) {
 }
 int Raft::getMe() {
 	return this->me;
+}
+
+/* === private functions === */
+void Raft::candidacy() {
+	// become candidate
+	this->getStatus()->becomeCandidate();
+
+	// increment term
+	this->getStatus()->incrementCurrentTerm();
+
+	// vote for me
+	this->getStatus()->setVotedFor(this->getMe());
+
+	// send request vote rpcs
+	for (RaftNode* rNode : *this->getRaftNodes()) {
+		if (!rNode->isMe()) {
+			char msg[REQUEST_VOTE_RPC_LENGTH];
+			request_vote_rpc* rrpc = (request_vote_rpc*)malloc(sizeof(request_vote_rpc));
+			rrpcByFields(
+				rrpc,
+				this->getStatus()->getCurrentTerm(),
+				this->getMe(),
+				this->getStatus()->getLog()->lastLogIndex(),
+				this->getStatus()->getLog()->lastLogTerm()
+			);
+			rrpc2str(rrpc, msg);
+			rNode->send(msg, REQUEST_VOTE_RPC_LENGTH);
+		}
+	}
 }

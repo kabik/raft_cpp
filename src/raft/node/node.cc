@@ -6,11 +6,8 @@ Node::Node(string* hostname, int listenPort) {
 	this->sock = 0;
 }
 
-void Node::send(string message) {
-}
-
-string Node::receive() {
-	return "string";
+void Node::send(char* message, int length) {
+	write(this->getSock(), message, length);
 }
 
 string Node::getHostname() {

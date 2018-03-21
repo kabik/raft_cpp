@@ -25,19 +25,11 @@ int main(int argc, char* argv[]) {
 	raft->connectOtherRaftNodes();
 
 	auto receiveThread = thread([&raft]{ raft->receive(); });
-
-	// test
-	while (1) {
-		sleep_for(milliseconds(1000));
-		for (RaftNode* rNode : raft->getRaftNodes()) {
-			if (!rNode->isMe()) {
-				write(rNode->getSock(), raft->getRaftNodes()[raft->getMe()]->getHostname().c_str(), 30);
-			}
-		}
-	}
+	auto timerThread = thread([&raft]{ raft->timer(); });
 
 	receiveThread.join();
 	listenThread.join();
+	timerThread.join();
 
 	return 0;
 }

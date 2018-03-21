@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <random>
 
 #define STR(var) #var
 
@@ -85,6 +86,11 @@ static int mkdir_path(const char *filepath, mode_t mode) {
 static int mymkdir(const char *filepath) {
 	int rc = mkdir_path(filepath, 0755);
 	return rc;
+}
+
+static int myrand(int min, int max) {
+	std::random_device rnd;
+	return rnd() % (max - min) + min;
 }
 
 #endif //FUNCTIONS_H

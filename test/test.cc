@@ -87,5 +87,15 @@ int main() {
 		<< STR(discernRPC(srrv))  << " = " << discernRPC(srrv)  << " = " << StrRPCKind(discernRPC(srrv))  << endl;
 	// ======= RPC TEST ========== //
 
+	// === myrand() test ========= //
+	int min = 100, max = 200;
+	for (int i = 0; i < 10000; i++) {
+		int v = myrand(min, max);
+		if (v < min || max <= v) {
+			cerr << "===== ERROR =====\n    myrand() does NOT work well\n===== ERROR =====" << endl;
+		}
+	}
+	// === myrand() test ========= //
+
 	return 0;
 }

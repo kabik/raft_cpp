@@ -3,6 +3,7 @@
 
 #include "status.h"
 #include "log.h"
+#include "../state.h"
 #include "savedValue.h"
 #include "../../functions.cc"
 
@@ -19,8 +20,12 @@ Status::Status(string storageDirectoryName) {
 	this->currentTerm = new SavedValue("currentTerm", storageDirectoryName + "currentTerm");
 	this->votedFor = new SavedValue("votedFor", storageDirectoryName + "votedFor");
 
-	cout << this->votedFor->getName() << ": " << this->votedFor->getValue() << endl;
+	if (this->currentTerm->getValue().empty()) {
+		this->currentTerm->setValue("0");
+	}
+
 	cout << this->currentTerm->getName() << ": " << this->currentTerm->getValue() << endl;
+	cout << this->votedFor->getName() << ": " << this->votedFor->getValue() << endl;
 }
 
 void Status::createDirectory() {
@@ -42,6 +47,35 @@ void Status::createDirectory() {
 
 string Status::getStorageDirectoryName() {
 	return *this->storageDirectoryName;
+}
+
+Log* Status::getLog() {
+	return this->log;
+}
+
+State Status::getState() {
+	return this->state;
+}
+void Status::setState(State state) {
+	this->state = state;
+}
+bool Status::isFollower() {
+	return this->state == FOLLOWER;
+}
+bool Status::isCandidate() {
+	return this->state == CANDIDATE;
+}
+bool Status::isLeader() {
+	return this->state == LEADER;
+}
+void Status::becomeFollower() {
+	this->state = FOLLOWER;
+}
+void Status::becomeCandidate() {
+	this->state = CANDIDATE;
+}
+void Status::becomeLeader() {
+	this->state = LEADER;
 }
 
 int Status::getCurrentTerm() {
@@ -71,4 +105,11 @@ int Status::getLastApplied() {
 }
 void Status::setLastApplied(int lastApplied) {
 	this->lastApplied = lastApplied;
+}
+
+int Status::getTimeoutTime() {
+	return this->timeouttime;
+}
+void Status::setTimeoutTime(int timeouttime) {
+	this->timeouttime = timeouttime;
 }

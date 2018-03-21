@@ -17,7 +17,11 @@ int Log::lastLogIndex() {
 	return this->_log.size() - 1;
 }
 int Log::lastLogTerm() {
-	return this->_log[this->lastLogIndex()]->term;
+	if (this->lastLogIndex() < 0) {
+		return -1;
+	} else {
+		return this->_log[this->lastLogIndex()]->term;
+	}
 }
 
 entry Log::get(int index) {

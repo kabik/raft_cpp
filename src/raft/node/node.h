@@ -10,7 +10,7 @@ private:
 public:
 	Node(string* hostname, int port);
 
-	void send(string message);
+	void send(char* message, int length);
 	string receive();
 
 	string getHostname();
