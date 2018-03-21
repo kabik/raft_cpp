@@ -74,12 +74,15 @@ void Raft::timer() {
 	while(1) {
 		sleep_for(milliseconds(100));
 
-		cout << this->getDuration().count() << " " << isTimeout()
-			<< " State = " << StrState(this->getStatus()->getState()) << endl;
+		cout << StrState(this->getStatus()->getState())
+			<< " term=" << this->getStatus()->getCurrentTerm()
+			<< " duration=" << this->getDuration().count()
+			<< endl;
 
 		if (this->isTimeout()) {
+			cout << "timeout in term " << this->getStatus()->getCurrentTerm() << endl;
 			this->resetStartTime();
-			if (this->getStatus()->isFollower()) {
+			if (this->getStatus()->isFollower() || this->getStatus()->isCandidate()) {
 				candidacy();
 			}
 		} else {
