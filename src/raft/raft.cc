@@ -34,11 +34,15 @@ Raft::Raft(char* configFileName) {
 	this->status = new Status(this->getConfig()->getStorageDirectoryName());
 	this->status->setState(FOLLOWER);
 	this->resetTimeoutTime();
+
+	// others
+	this->leaderTerm = this->status->getCurrentTerm();
+	this->vote = 0;
 }
 
 void Raft::receive() {
 	fd_set fds, readfds;
-	char buf[2048];
+	char buf[BUFFER_SIZE];
 
 	FD_ZERO(&readfds);
 
@@ -61,7 +65,17 @@ void Raft::receive() {
 				memset(buf, 0, sizeof(buf));
 				recv(sock, buf, sizeof(buf), 0);
 				if (buf[0] != 0) {
-					printf("sock=%d %s: [%s]\n", sock, rNode->getHostname().c_str(), buf);
+					RPCKind rpcKind = discernRPC(buf);
+					cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
+					if        (rpcKind == RPC_KIND_APPEND_ENTRIES) {
+						appendEntriesRecieved(rNode, buf);
+					} else if (rpcKind == RPC_KIND_REQUEST_VOTE) {
+						requestVoteReceived(rNode, buf);
+					} else if (rpcKind == RPC_KIND_RESPONSE_APPEND_ENTRIES) {
+						responceAppendEntriesReceived(rNode, buf);
+					} else if (rpcKind == RPC_KIND_RESPONSE_REQUEST_VOTE) {
+						responceRequestVoteReceived(rNode, buf);
+					}
 				}
 			}
 		}
@@ -74,15 +88,17 @@ void Raft::timer() {
 	while(1) {
 		sleep_for(milliseconds(100));
 
-		cout << StrState(this->getStatus()->getState())
-			<< " term=" << this->getStatus()->getCurrentTerm()
-			<< " duration=" << this->getDuration().count()
-			<< endl;
+		if (this->getStatus()->isLeader() && this->getDuration().count() > HEARTBEAT_INTERVAL) {
+			//cout << "send appendEntriesRPC" << endl;
+			this->resetStartTime();
+			this->appendEntriesRPC();
+		}
 
 		if (this->isTimeout()) {
 			cout << "timeout in term " << this->getStatus()->getCurrentTerm() << endl;
 			this->resetStartTime();
 			if (this->getStatus()->isFollower() || this->getStatus()->isCandidate()) {
+				cout << "candidacy" << endl;
 				candidacy();
 			}
 		} else {
@@ -115,8 +131,7 @@ void Raft::listenTCP() {
 		len = sizeof(client);
 		sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len);
 		for (RaftNode* rNode : *this->getRaftNodes()) {
-			if (inet_ntoa(client.sin_addr) == rNode->getHostname() &&
-				rNode->getSock() == 0) {
+			if (inet_ntoa(client.sin_addr) == rNode->getHostname() && rNode->getSock() == 0) {
 				rNode->setSock(sock);
 			}
 		}
@@ -227,7 +242,32 @@ int Raft::getMe() {
 }
 
 /* === private functions === */
+void Raft::appendEntriesRPC() {
+	// send heartbeat
+	char msg[APPEND_ENTRIES_RPC_LENGTH];
+	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
+	arpcByFields(
+		arpc,
+		this->getStatus()->getCurrentTerm(),
+		this->getMe(),
+		this->getStatus()->getLog()->lastLogIndex(),
+		this->getStatus()->getLog()->lastLogTerm(),
+		this->getStatus()->getCommitIndex(),
+		""
+	);
+	arpc2str(arpc, msg);
+	for (RaftNode* rNode : *this->getRaftNodes()) {
+		if (!rNode->isMe()) {
+			rNode->send(msg, APPEND_ENTRIES_RPC_LENGTH);
+		}
+	}
+
+	free(arpc);
+}
+
 void Raft::candidacy() {
+	this->resetTimeoutTime();
+
 	// become candidate
 	this->getStatus()->becomeCandidate();
 
@@ -236,6 +276,7 @@ void Raft::candidacy() {
 
 	// vote for me
 	this->getStatus()->setVotedFor(this->getMe());
+	this->vote = 1;
 
 	// send request vote rpcs
 	for (RaftNode* rNode : *this->getRaftNodes()) {
@@ -250,7 +291,120 @@ void Raft::candidacy() {
 				this->getStatus()->getLog()->lastLogTerm()
 			);
 			rrpc2str(rrpc, msg);
+			free(rrpc);
 			rNode->send(msg, REQUEST_VOTE_RPC_LENGTH);
 		}
+	}
+}
+
+void Raft::appendEntriesRecieved(RaftNode* rNode, char* msg) {
+	this->resetStartTime();
+
+	// prepare
+	bool grant = true;
+	int currentTerm = this->getStatus()->getCurrentTerm();
+	Log* log = this->getStatus()->getLog();
+
+	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
+	str2arpc(msg, arpc);
+
+	// check valid appendEntriesRPC or not
+	if (currentTerm > arpc->term ||
+		!log->match(arpc->prevLogIndex, arpc->prevLogIndex)) {
+		grant = false;
+	}
+	if (this->getStatus()->isCandidate() && currentTerm <= arpc->term) {
+		// become Follower
+		this->getStatus()->becomeFollower();
+
+		// vote for the sender
+		vote = 0;
+		this->getStatus()->setVotedFor(arpc->leaderId);
+		while(this->getStatus()->getCurrentTerm() < arpc->term) {
+			this->getStatus()->incrementCurrentTerm();
+		}
+
+		currentTerm = this->getStatus()->getCurrentTerm();
+		leaderTerm = arpc->term;
+	}
+
+	// do if grant == true
+	if (grant) {
+		if (!log->match(arpc->prevLogIndex, arpc->prevLogTerm)) {
+			// delete log[index] : index >= arpc->prevLogIndex
+		}
+		// push entries to log
+
+		// update commitIndex
+	}
+
+	// send response to the Leader
+	char str[RESPONSE_APPEND_ENTRIES_LENGTH];
+	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
+	raeByFields(rae, currentTerm, grant);
+	rae2str(rae, str);
+	rNode->send(str, RESPONSE_APPEND_ENTRIES_LENGTH);
+
+	free(rae);
+	free(arpc);
+}
+void Raft::requestVoteReceived(RaftNode* rNode, char* msg) {
+	this->resetStartTime();
+
+	// prepare
+	bool grant = true;
+	int currentTerm = this->getStatus()->getCurrentTerm();
+
+	request_vote_rpc* rrpc = (request_vote_rpc*)malloc(sizeof(request_vote_rpc));
+	str2rrpc(msg, rrpc);
+
+	cout << "rrpc->term=" << rrpc->term << endl;
+
+	// check valid candidate or not
+	if (rrpc->term < currentTerm) {
+		grant = false;
+	}
+	if (rrpc->term == this->leaderTerm && rrpc->candidateId != this->getStatus()->getVotedFor()) {
+		grant = false;
+	}
+	Log* log = this->getStatus()->getLog();
+	if (rrpc->lastLogTerm < log->lastLogTerm() ||
+		(rrpc->lastLogTerm == log->lastLogTerm() && rrpc->lastLogIndex < log->lastLogIndex())) {
+		grant = false;
+	}
+
+	if (grant) {
+		this->leaderTerm = rrpc->term;
+		this->getStatus()->setVotedFor(rrpc->candidateId);
+		cout << "vote for " << rrpc->candidateId << " leaderTerm=" << this->leaderTerm << " votedFor=" << this->getStatus()->getVotedFor() << endl;
+	}
+
+	// send response to the Candidate
+	char str[RESPONSE_REQUEST_VOTE_LENGTH];
+	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
+	rrvByFields(rrv, this->getStatus()->getCurrentTerm(), grant);
+	rrv2str(rrv, str);
+	rNode->send(str, RESPONSE_REQUEST_VOTE_LENGTH);
+
+	free(rrpc);
+	free(rrv);
+}
+void Raft::responceAppendEntriesReceived(RaftNode* rNode, char* msg) {
+	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
+	str2rae(msg, rae);
+}
+void Raft::responceRequestVoteReceived(RaftNode* rNode, char* msg) {
+	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
+	str2rrv(msg, rrv);
+
+	if (rrv->success) {
+		vote++;
+	}
+	if (vote > this->getConfig()->getNumberOfNodes() / 2) {
+		// become Leader
+		cout << "win the election at term " << this->getStatus()->getCurrentTerm() << endl;
+		vote = 0;
+		this->getStatus()->becomeLeader();
+		this->getStatus()->incrementCurrentTerm();
 	}
 }

@@ -24,8 +24,21 @@ int Log::lastLogTerm() {
 	}
 }
 
-entry Log::get(int index) {
-	return *this->_log[index];
+bool Log::match(int index, int term) {
+	if (index == -1 && this->lastLogIndex() == -1) {
+		return true;
+	}
+
+	entry* e = this->get(index);
+	if (!e) {
+		return false;
+	} else {
+		return term == this->get(index)->term;
+	}
+}
+
+entry* Log::get(int index) {
+	return this->_log[index];
 }
 
 void Log::add(int term, char command[COMMAND_STR_LENGTH]) {

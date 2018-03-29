@@ -20,7 +20,8 @@ public:
 	int size();
 	int lastLogIndex();
 	int lastLogTerm();
-	entry get(int index);
+	bool match(int index, int term);
+	entry* get(int index);
 	void add(int term, char command[COMMAND_STR_LENGTH]);
 };
 

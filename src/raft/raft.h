@@ -20,7 +20,17 @@ private:
 	int me;
 	high_resolution_clock::time_point startTime;
 
+	int leaderTerm;
+	int vote;
+
+	/* === private functions === */
+	void appendEntriesRPC();
 	void candidacy();
+
+	void appendEntriesRecieved(RaftNode* rNode, char* msg);
+	void requestVoteReceived(RaftNode* rNode, char* msg);
+	void responceAppendEntriesReceived(RaftNode* rNode, char* msg);
+	void responceRequestVoteReceived(RaftNode* rNode, char* msg);
 
 public:
 	Raft(char* configFileName);

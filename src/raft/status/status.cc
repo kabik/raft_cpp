@@ -19,9 +19,14 @@ Status::Status(string storageDirectoryName) {
 	this->log = new Log(storageDirectoryName);
 	this->currentTerm = new SavedValue("currentTerm", storageDirectoryName + "currentTerm");
 	this->votedFor = new SavedValue("votedFor", storageDirectoryName + "votedFor");
+	this->commitIndex = -1;
+	this->lastApplied = -1;
 
 	if (this->currentTerm->getValue().empty()) {
 		this->currentTerm->setValue("0");
+	}
+	if (this->votedFor->getValue().empty()) {
+		this->votedFor->setValue("-1");
 	}
 
 	cout << this->currentTerm->getName() << ": " << this->currentTerm->getValue() << endl;
