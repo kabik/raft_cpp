@@ -10,7 +10,7 @@ private:
 public:
 	Node(string* hostname, int port);
 
-	void send(string message);
+	void send(char* message, int length);
 	string receive();
 
 	string getHostname();
@@ -18,6 +18,9 @@ public:
 
 	int getListenPort();
 	void setListenPort(int listenPort);
+
+	int getSock();
+	void setSock(int sock);
 };
 
 #include "node.cc"

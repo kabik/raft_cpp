@@ -14,14 +14,20 @@ typedef struct _node_conf {
 
 class Config {
 private:
-	string configFileName;
+	string *configFileName;
+	string *storageDirectoryName;
 	int nNodes;
 	vector<node_conf* > nodes;
 
 public:
 	Config(char* configFileName);
+
+	string getStorageDirectoryName();
+	void setStorageDirectoryName(string storageDirectoryName);
+
 	int getNumberOfNodes();
 	void setNumberOfNodes(int nNodes);
+
 	vector<node_conf*> getNodes();
 	void setNodes(vector<node_conf*> nodes);
 };
