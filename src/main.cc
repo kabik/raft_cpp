@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <iostream>
+#include <memory>
 #include <thread>
 
 #include "raft/raft.h"
-
-#include "raft/rpc.cc"
 
 using std::cout;
 using std::endl;
@@ -18,15 +17,18 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	Raft *raft = new Raft(argv[1]);
+	if (auto raft = std::make_shared<Raft>()) {
+		raft->createConfig(argv[1]);
+		raft->setRaftNodesByConfig();
+    
+    auto receiveThread = thread([&raft]{ raft->receive(); });
+    sleep_for(milliseconds(1000));
 
-	auto receiveThread = thread([&raft]{ raft->receive(); });
-	sleep_for(milliseconds(1000));
+    auto timerThread = thread([&raft]{ raft->timer(); });
+    
+    receiveThread.join();
+    timerThread.join();
+	}
 
-	auto timerThread = thread([&raft]{ raft->timer(); });
-
-	receiveThread.join();
-	timerThread.join();
-
-	return 0;
+  return 0;
 }
