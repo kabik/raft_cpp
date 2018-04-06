@@ -37,8 +37,6 @@ public:
 
 	void receive();
 	void timer();
-	void listenTCP();
-	void connectOtherRaftNodes();
 	void resetTimeoutTime();
 
 	bool isTimeout();

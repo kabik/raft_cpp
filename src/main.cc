@@ -20,15 +20,12 @@ int main(int argc, char* argv[]) {
 
 	Raft *raft = new Raft(argv[1]);
 
-	auto listenThread = thread([&raft]{ raft->listenTCP(); });
-	sleep_for(milliseconds(1000));
-	raft->connectOtherRaftNodes();
-
 	auto receiveThread = thread([&raft]{ raft->receive(); });
+	sleep_for(milliseconds(1000));
+
 	auto timerThread = thread([&raft]{ raft->timer(); });
 
 	receiveThread.join();
-	listenThread.join();
 	timerThread.join();
 
 	return 0;

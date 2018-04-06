@@ -41,24 +41,74 @@ Raft::Raft(char* configFileName) {
 }
 
 void Raft::receive() {
-	fd_set fds, readfds;
-	char buf[BUFFER_SIZE];
+	// === bind ===
+	int listenSocket;
+	struct sockaddr_in addr, client;
 
-	FD_ZERO(&readfds);
-
-	int maxfd = 0;
-	for (RaftNode* rNode : *this->getRaftNodes()) {
-		if (!rNode->isMe()) {
-			if (rNode->getSock() > maxfd) {
-				maxfd = rNode->getSock();
-			}
-			FD_SET(rNode->getSock(), &readfds);
-		}
+	if ((listenSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket");
+		exit(1);
 	}
 
+	int listenPort = this->getRaftNodeById(this->getMe())->getListenPort();
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(listenPort);
+	addr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(listenSocket, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+		perror("bind");
+		exit(1);
+	}
+
+	if (listen(listenSocket, 30) < 0) {
+		perror("listen");
+		close(listenSocket);
+		exit(1);
+	} else {
+		cout << "Listening in Port " << listenPort << "." << endl;
+	}
+
+
+	// === select ===
+
+	fd_set fds, fds_save;
+	char buf[BUFFER_SIZE];
+
+	FD_ZERO(&fds_save);
+	FD_SET(listenSocket, &fds_save);
+
 	while(1) {
-		memcpy(&fds, &readfds, sizeof(fd_set));
-		select(maxfd+1, &fds, NULL, NULL, NULL);
+		memcpy(&fds, &fds_save, sizeof(fd_set));
+		if (select(FD_SETSIZE, &fds, NULL, NULL, NULL) < 0) {
+			perror("select");
+			exit(1);
+		}
+
+		for (RaftNode* rNode : *this->getRaftNodes()) {
+			int sock = rNode->getSock();
+			if (!rNode->isMe() && sock > 0 && !FD_ISSET(sock, &fds_save)) {
+				FD_SET(sock, &fds_save);
+				cout << rNode->getHostname() << " (sock=" << rNode->getSock() << ") is set.\n";
+			}
+		}
+
+		if (FD_ISSET(listenSocket, &fds)) {
+			//FD_CLR(listenSocket, &fds);
+			int len = sizeof(client);
+			int sock;
+			if ((sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len)) < 0) {
+				perror("accept");
+				exit(1);
+			}
+			for (RaftNode* rNode : *this->getRaftNodes()) {
+				if (inet_ntoa(client.sin_addr) == rNode->getHostname() && rNode->getSock() == 0) {
+					rNode->setSock(sock);
+					cout << rNode->getHostname() << " connected from it. (sock=" << sock << ")\n";
+				}
+			}
+			FD_SET(sock, &fds_save);
+		}
+
 		for (RaftNode* rNode : *this->getRaftNodes()) {
 			int sock = rNode->getSock();
 			if (!rNode->isMe() && FD_ISSET(sock, &fds)) {
@@ -107,40 +157,7 @@ void Raft::timer() {
 	}
 }
 
-void Raft::listenTCP() {
-	int listenSocket;
-	struct sockaddr_in addr;
-	struct sockaddr_in client;
-	int len;
-	int sock;
-
-	listenSocket = socket(AF_INET, SOCK_STREAM, 0);
-
-	int listenPort = this->getRaftNodeById(this->getMe())->getListenPort();
-
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(listenPort);
-	addr.sin_addr.s_addr = INADDR_ANY;
-	bind(listenSocket, (struct sockaddr*)&addr, sizeof(addr));
-
-	cout << "Listening in Port " << listenPort << "." << endl;
-
-	while (1) {
-		listen(listenSocket, 10);
-
-		len = sizeof(client);
-		sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len);
-		for (RaftNode* rNode : *this->getRaftNodes()) {
-			if (inet_ntoa(client.sin_addr) == rNode->getHostname() && rNode->getSock() == 0) {
-				rNode->setSock(sock);
-			}
-		}
-	}
-
-	close(listenSocket);
-}
-
-void Raft::connectOtherRaftNodes() {
+/*void Raft::connectOtherRaftNodes() {
 	for (RaftNode* rNode : *this->getRaftNodes()) {
 		if (!rNode->isMe() && rNode->getSock() == 0) {
 			struct sockaddr_in server;
@@ -152,14 +169,21 @@ void Raft::connectOtherRaftNodes() {
 			server.sin_port = htons(rNode->getListenPort());
 			server.sin_addr.s_addr = inet_addr(rNode->getHostname().c_str());
 
-			cout << "Connecting to " << rNode->getHostname() << ":" << rNode->getListenPort() << endl;
+			//connect(sock, (struct sockaddr *)&server, sizeof(server));
 
-			connect(sock, (struct sockaddr *)&server, sizeof(server));
+			if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
+				perror("connect");
+			} else {
+				rNode->setSock(sock);
+				cout << rNode->getHostname() << " connected from me. (sock=" << sock << ")\n";
 
-			rNode->setSock(sock);
+				rNode->send("test", 4);
+
+			}
 		}
 	}
 }
+*/
 
 void Raft::resetTimeoutTime() {
 	int tt = myrand(MIN_TIMEOUTTIME_MICROSECONDS, MAX_TIMEOUTTIME_MICROSECONDS);
@@ -358,8 +382,6 @@ void Raft::requestVoteReceived(RaftNode* rNode, char* msg) {
 	request_vote_rpc* rrpc = (request_vote_rpc*)malloc(sizeof(request_vote_rpc));
 	str2rrpc(msg, rrpc);
 
-	cout << "rrpc->term=" << rrpc->term << endl;
-
 	// check valid candidate or not
 	if (rrpc->term < currentTerm) {
 		grant = false;
@@ -392,6 +414,8 @@ void Raft::requestVoteReceived(RaftNode* rNode, char* msg) {
 void Raft::responceAppendEntriesReceived(RaftNode* rNode, char* msg) {
 	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
 	str2rae(msg, rae);
+
+	free(rae);
 }
 void Raft::responceRequestVoteReceived(RaftNode* rNode, char* msg) {
 	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
@@ -407,4 +431,6 @@ void Raft::responceRequestVoteReceived(RaftNode* rNode, char* msg) {
 		this->getStatus()->becomeLeader();
 		this->getStatus()->incrementCurrentTerm();
 	}
+
+	free(rrv);
 }
