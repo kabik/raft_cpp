@@ -17,17 +17,14 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	if (auto raft = std::make_shared<Raft>()) {
-		raft->createConfig(argv[1]);
-		raft->setRaftNodesByConfig();
-    
-    auto receiveThread = thread([&raft]{ raft->receive(); });
-    sleep_for(milliseconds(1000));
+	if (auto raft = std::make_shared<Raft>(argv[1])) {
+		auto receiveThread = thread([&raft]{ raft->receive(); });
+		sleep_for(milliseconds(1000));
 
-    auto timerThread = thread([&raft]{ raft->timer(); });
-    
-    receiveThread.join();
-    timerThread.join();
+		auto timerThread = thread([&raft]{ raft->timer(); });
+
+		receiveThread.join();
+		timerThread.join();
 	}
 
   return 0;

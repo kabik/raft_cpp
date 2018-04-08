@@ -26,6 +26,10 @@ using std::chrono::microseconds;
 using std::chrono::high_resolution_clock;
 using std::chrono::duration_cast;
 
+static void* work(void* args);
+static void sendMessage(Raft* raft, RaftNode* rNode, char* msg, int length);
+static void connect2raftnode(Raft* raft, RaftNode* rNode, int fd);
+
 Raft::Raft(char* configFileName) {
 	this->config = new Config(configFileName);
 	this->raftNodes = new vector<RaftNode*>;
@@ -60,6 +64,8 @@ void Raft::receive() {
 		exit(1);
 	}
 
+
+	// === listen ===
 	if (listen(listenSocket, 30) < 0) {
 		perror("listen");
 		close(listenSocket);
@@ -69,66 +75,22 @@ void Raft::receive() {
 	}
 
 
-	// === select ===
-
-	fd_set fds, fds_save;
-	char buf[BUFFER_SIZE];
-
-	FD_ZERO(&fds_save);
-	FD_SET(listenSocket, &fds_save);
-
+	// === accept ===
 	while(1) {
-		memcpy(&fds, &fds_save, sizeof(fd_set));
-		if (select(FD_SETSIZE, &fds, NULL, NULL, NULL) < 0) {
-			perror("select");
+		int len = sizeof(client);
+		int sock;
+		if ((sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len)) < 0) {
+			perror("accept");
 			exit(1);
 		}
-
 		for (RaftNode* rNode : *this->getRaftNodes()) {
-			int sock = rNode->getSock();
-			if (!rNode->isMe() && sock > 0 && !FD_ISSET(sock, &fds_save)) {
-				FD_SET(sock, &fds_save);
-				cout << rNode->getHostname() << " (sock=" << rNode->getSock() << ") is set.\n";
-			}
-		}
+			if (!rNode->isMe() && inet_ntoa(client.sin_addr) == rNode->getHostname() && rNode->getSock() == 0) {
+				connect2raftnode(this, rNode, sock);
 
-		if (FD_ISSET(listenSocket, &fds)) {
-			//FD_CLR(listenSocket, &fds);
-			int len = sizeof(client);
-			int sock;
-			if ((sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len)) < 0) {
-				perror("accept");
-				exit(1);
-			}
-			for (RaftNode* rNode : *this->getRaftNodes()) {
-				if (inet_ntoa(client.sin_addr) == rNode->getHostname() && rNode->getSock() == 0) {
-					rNode->setSock(sock);
-					cout << rNode->getHostname() << " connected from it. (sock=" << sock << ")\n";
-				}
-			}
-			FD_SET(sock, &fds_save);
-		}
-
-		for (RaftNode* rNode : *this->getRaftNodes()) {
-			int sock = rNode->getSock();
-			if (!rNode->isMe() && FD_ISSET(sock, &fds)) {
-				memset(buf, 0, sizeof(buf));
-				recv(sock, buf, sizeof(buf), 0);
-				if (buf[0] != 0) {
-					RPCKind rpcKind = discernRPC(buf);
-					cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
-					if        (rpcKind == RPC_KIND_APPEND_ENTRIES) {
-						appendEntriesRecieved(rNode, buf);
-					} else if (rpcKind == RPC_KIND_REQUEST_VOTE) {
-						requestVoteReceived(rNode, buf);
-					} else if (rpcKind == RPC_KIND_RESPONSE_APPEND_ENTRIES) {
-						responceAppendEntriesReceived(rNode, buf);
-					} else if (rpcKind == RPC_KIND_RESPONSE_REQUEST_VOTE) {
-						responceRequestVoteReceived(rNode, buf);
-					}
-				}
+				cout << rNode->getHostname() << " connected from it. (sock=" << sock << ")\n";
 			}
 		}
+		// if client
 	}
 }
 
@@ -156,34 +118,6 @@ void Raft::timer() {
 		}
 	}
 }
-
-/*void Raft::connectOtherRaftNodes() {
-	for (RaftNode* rNode : *this->getRaftNodes()) {
-		if (!rNode->isMe() && rNode->getSock() == 0) {
-			struct sockaddr_in server;
-			int sock;
-
-			sock = socket(AF_INET, SOCK_STREAM, 0);
-
-			server.sin_family = AF_INET;
-			server.sin_port = htons(rNode->getListenPort());
-			server.sin_addr.s_addr = inet_addr(rNode->getHostname().c_str());
-
-			//connect(sock, (struct sockaddr *)&server, sizeof(server));
-
-			if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
-				perror("connect");
-			} else {
-				rNode->setSock(sock);
-				cout << rNode->getHostname() << " connected from me. (sock=" << sock << ")\n";
-
-				rNode->send("test", 4);
-
-			}
-		}
-	}
-}
-*/
 
 void Raft::resetTimeoutTime() {
 	int tt = myrand(MIN_TIMEOUTTIME_MICROSECONDS, MAX_TIMEOUTTIME_MICROSECONDS);
@@ -265,6 +199,20 @@ int Raft::getMe() {
 	return this->me;
 }
 
+int Raft::getVote() {
+	return this->vote;
+}
+void Raft::setVote(int vote) {
+	this->vote = vote;
+}
+
+int Raft::getLeaderTerm() {
+	return this->leaderTerm;
+}
+void Raft::setLeaderTerm(int leaderTerm) {
+	this->leaderTerm = leaderTerm;
+}
+
 /* === private functions === */
 void Raft::appendEntriesRPC() {
 	// send heartbeat
@@ -282,7 +230,7 @@ void Raft::appendEntriesRPC() {
 	arpc2str(arpc, msg);
 	for (RaftNode* rNode : *this->getRaftNodes()) {
 		if (!rNode->isMe()) {
-			rNode->send(msg, APPEND_ENTRIES_RPC_LENGTH);
+			sendMessage(this, rNode, msg, APPEND_ENTRIES_RPC_LENGTH);
 		}
 	}
 
@@ -316,18 +264,18 @@ void Raft::candidacy() {
 			);
 			rrpc2str(rrpc, msg);
 			free(rrpc);
-			rNode->send(msg, REQUEST_VOTE_RPC_LENGTH);
+			sendMessage(this, rNode, msg, REQUEST_VOTE_RPC_LENGTH);
 		}
 	}
 }
 
-void Raft::appendEntriesRecieved(RaftNode* rNode, char* msg) {
-	this->resetStartTime();
+static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
+	raft->resetStartTime();
 
 	// prepare
 	bool grant = true;
-	int currentTerm = this->getStatus()->getCurrentTerm();
-	Log* log = this->getStatus()->getLog();
+	int currentTerm = raft->getStatus()->getCurrentTerm();
+	Log* log = raft->getStatus()->getLog();
 
 	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
 	str2arpc(msg, arpc);
@@ -337,19 +285,19 @@ void Raft::appendEntriesRecieved(RaftNode* rNode, char* msg) {
 		!log->match(arpc->prevLogIndex, arpc->prevLogIndex)) {
 		grant = false;
 	}
-	if (this->getStatus()->isCandidate() && currentTerm <= arpc->term) {
+	if (raft->getStatus()->isCandidate() && currentTerm <= arpc->term) {
 		// become Follower
-		this->getStatus()->becomeFollower();
+		raft->getStatus()->becomeFollower();
 
 		// vote for the sender
-		vote = 0;
-		this->getStatus()->setVotedFor(arpc->leaderId);
-		while(this->getStatus()->getCurrentTerm() < arpc->term) {
-			this->getStatus()->incrementCurrentTerm();
+		raft->setVote(0);
+		raft->getStatus()->setVotedFor(arpc->leaderId);
+		while(raft->getStatus()->getCurrentTerm() < arpc->term) {
+			raft->getStatus()->incrementCurrentTerm();
 		}
 
-		currentTerm = this->getStatus()->getCurrentTerm();
-		leaderTerm = arpc->term;
+		currentTerm = raft->getStatus()->getCurrentTerm();
+		raft->setLeaderTerm(arpc->term);
 	}
 
 	// do if grant == true
@@ -367,17 +315,17 @@ void Raft::appendEntriesRecieved(RaftNode* rNode, char* msg) {
 	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
 	raeByFields(rae, currentTerm, grant);
 	rae2str(rae, str);
-	rNode->send(str, RESPONSE_APPEND_ENTRIES_LENGTH);
+	sendMessage(raft, rNode, str, RESPONSE_APPEND_ENTRIES_LENGTH);
 
 	free(rae);
 	free(arpc);
 }
-void Raft::requestVoteReceived(RaftNode* rNode, char* msg) {
-	this->resetStartTime();
+static void requestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) {
+	raft->resetStartTime();
 
 	// prepare
 	bool grant = true;
-	int currentTerm = this->getStatus()->getCurrentTerm();
+	int currentTerm = raft->getStatus()->getCurrentTerm();
 
 	request_vote_rpc* rrpc = (request_vote_rpc*)malloc(sizeof(request_vote_rpc));
 	str2rrpc(msg, rrpc);
@@ -386,51 +334,132 @@ void Raft::requestVoteReceived(RaftNode* rNode, char* msg) {
 	if (rrpc->term < currentTerm) {
 		grant = false;
 	}
-	if (rrpc->term == this->leaderTerm && rrpc->candidateId != this->getStatus()->getVotedFor()) {
+	if (rrpc->term == raft->getLeaderTerm() && rrpc->candidateId != raft->getStatus()->getVotedFor()) {
 		grant = false;
 	}
-	Log* log = this->getStatus()->getLog();
+	Log* log = raft->getStatus()->getLog();
 	if (rrpc->lastLogTerm < log->lastLogTerm() ||
 		(rrpc->lastLogTerm == log->lastLogTerm() && rrpc->lastLogIndex < log->lastLogIndex())) {
 		grant = false;
 	}
 
 	if (grant) {
-		this->leaderTerm = rrpc->term;
-		this->getStatus()->setVotedFor(rrpc->candidateId);
-		cout << "vote for " << rrpc->candidateId << " leaderTerm=" << this->leaderTerm << " votedFor=" << this->getStatus()->getVotedFor() << endl;
+		raft->setLeaderTerm(rrpc->term);
+		raft->getStatus()->setVotedFor(rrpc->candidateId);
+		cout << "vote for " << rrpc->candidateId << " leaderTerm=" << raft->getLeaderTerm() << " votedFor=" << raft->getStatus()->getVotedFor() << endl;
 	}
 
 	// send response to the Candidate
 	char str[RESPONSE_REQUEST_VOTE_LENGTH];
 	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
-	rrvByFields(rrv, this->getStatus()->getCurrentTerm(), grant);
+	rrvByFields(rrv, raft->getStatus()->getCurrentTerm(), grant);
 	rrv2str(rrv, str);
-	rNode->send(str, RESPONSE_REQUEST_VOTE_LENGTH);
+	sendMessage(raft, rNode, str, RESPONSE_REQUEST_VOTE_LENGTH);
 
 	free(rrpc);
 	free(rrv);
 }
-void Raft::responceAppendEntriesReceived(RaftNode* rNode, char* msg) {
+static void responceAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg) {
 	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
 	str2rae(msg, rae);
 
 	free(rae);
 }
-void Raft::responceRequestVoteReceived(RaftNode* rNode, char* msg) {
+static void responceRequestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) {
 	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
 	str2rrv(msg, rrv);
 
 	if (rrv->success) {
-		vote++;
+		raft->setVote(raft->getVote() + 1);
 	}
-	if (vote > this->getConfig()->getNumberOfNodes() / 2) {
+	if (raft->getVote() > raft->getConfig()->getNumberOfNodes() / 2) {
 		// become Leader
-		cout << "win the election at term " << this->getStatus()->getCurrentTerm() << endl;
-		vote = 0;
-		this->getStatus()->becomeLeader();
-		this->getStatus()->incrementCurrentTerm();
+		cout << "win the election at term " << raft->getStatus()->getCurrentTerm() << endl;
+		raft->setVote(0);
+		raft->getStatus()->becomeLeader();
+		raft->getStatus()->incrementCurrentTerm();
 	}
 
 	free(rrv);
+}
+
+static void sendMessage(Raft* raft, RaftNode* rNode, char* msg, int length) {
+	connect2raftnode(raft, rNode, -1);
+	rNode->send(msg, length);
+}
+
+/*
+ * fd = -1 if i try to connect a server
+ */
+static void connect2raftnode(Raft* raft, RaftNode* rNode, int fd) {
+	// return if raftnode already connects me
+	if (rNode->getSock() > 0) {
+		return;
+	}
+
+	// connect
+	if (fd <= 0) {
+		struct sockaddr_in server;
+
+		int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+		server.sin_family = AF_INET;
+		server.sin_port = htons(rNode->getListenPort());
+		server.sin_addr.s_addr = inet_addr(rNode->getHostname().c_str());
+
+		if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
+			perror("connect");
+			exit(1);
+		} else {
+			rNode->setSock(sock);
+		}
+	} else {
+		rNode->setSock(fd);
+	}
+
+	// set worker thread
+	pthread_t worker;
+	worker_args* wargs = (worker_args*)malloc(sizeof(worker_args));
+	wargs->raft = raft;
+	wargs->rNode = rNode;
+	if (pthread_create( &worker, NULL, work, (void*)wargs ) < 0) {
+		perror("pthread_create");
+		exit(1);
+	}
+	rNode->setWorker(&worker);
+	pthread_detach(worker);
+}
+
+// worker thread
+static void* work(void* args) {
+	worker_args* wargs = (worker_args*)args;
+
+	Raft*     raft  = wargs->raft;
+	RaftNode* rNode = wargs->rNode;
+
+	char buf[BUFFER_SIZE];
+	int sock = rNode->getSock();
+
+	while(1) {
+		memset(buf, 0, sizeof(buf));
+		recv(sock, buf, sizeof(buf), 0);
+		if (buf[0] != 0) {
+			RPCKind rpcKind = discernRPC(buf);
+			cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
+
+			if        (rpcKind == RPC_KIND_APPEND_ENTRIES) {
+				appendEntriesRecieved(raft, rNode, buf);
+
+			} else if (rpcKind == RPC_KIND_REQUEST_VOTE) {
+				requestVoteReceived(raft, rNode, buf);
+
+			} else if (rpcKind == RPC_KIND_RESPONSE_APPEND_ENTRIES) {
+				responceAppendEntriesReceived(raft, rNode, buf);
+
+			} else if (rpcKind == RPC_KIND_RESPONSE_REQUEST_VOTE) {
+				responceRequestVoteReceived(raft, rNode, buf);
+
+			}
+		}
+	}
 }

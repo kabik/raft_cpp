@@ -10,7 +10,13 @@ using std::chrono::microseconds;
 
 class Config;
 class Status;
+class Raft;
 class RaftNode;
+
+typedef struct _worker_args {
+	Raft* raft;
+	RaftNode* rNode;
+} worker_args;
 
 class Raft {
 private:
@@ -24,13 +30,10 @@ private:
 	int vote;
 
 	/* === private functions === */
+	void setRaftNodesByConfig();
+
 	void appendEntriesRPC();
 	void candidacy();
-
-	void appendEntriesRecieved(RaftNode* rNode, char* msg);
-	void requestVoteReceived(RaftNode* rNode, char* msg);
-	void responceAppendEntriesReceived(RaftNode* rNode, char* msg);
-	void responceRequestVoteReceived(RaftNode* rNode, char* msg);
 
 public:
 	Raft(char* configFileName);
@@ -46,12 +49,17 @@ public:
 	Config* getConfig();
 	Status* getStatus();
 
-	void setRaftNodesByConfig();
 	vector<RaftNode*>* getRaftNodes();
 	RaftNode* getRaftNodeById(int id);
 
 	void setMe(int me);
 	int getMe();
+
+	int getLeaderTerm();
+	void setLeaderTerm(int leaderTerm);
+
+	int getVote();
+	void setVote(int vote);
 };
 
 #include "raft.cc"

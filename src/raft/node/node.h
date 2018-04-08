@@ -6,12 +6,12 @@ private:
 	string* hostname;
 	int listenPort;
 	int sock;
+	pthread_t* worker;
 
 public:
 	Node(string* hostname, int port);
 
 	void send(char* message, int length);
-	string receive();
 
 	string getHostname();
 	void setHostname(string hostname);
@@ -21,6 +21,9 @@ public:
 
 	int getSock();
 	void setSock(int sock);
+
+	pthread_t* getWorker();
+	void setWorker(pthread_t* worker);
 };
 
 #include "node.cc"
