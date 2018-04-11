@@ -5,10 +5,17 @@
 #define BUFFER_SIZE                    2048
 
 // RPC's message length related
+/*
 #define APPEND_ENTRIES_RPC_LENGTH      1024
 #define REQUEST_VOTE_RPC_LENGTH        2048
 #define RESPONSE_APPEND_ENTRIES_LENGTH 16
 #define RESPONSE_REQUEST_VOTE_LENGTH   16
+*/
+#define APPEND_ENTRIES_RPC_LENGTH      2048
+#define REQUEST_VOTE_RPC_LENGTH        2048
+#define RESPONSE_APPEND_ENTRIES_LENGTH 2048
+#define RESPONSE_REQUEST_VOTE_LENGTH   2048
+
 #define ENTRIES_STR_LENGTH             1024
 #define ENTRY_STR_LENGTH               32
 #define COMMAND_STR_LENGTH             22

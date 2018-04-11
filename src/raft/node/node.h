@@ -5,7 +5,8 @@ class Node {
 private:
 	string* hostname;
 	int listenPort;
-	int sock;
+	int receiveSock;
+	int sendSock;
 	pthread_t* worker;
 
 public:
@@ -19,8 +20,10 @@ public:
 	int getListenPort();
 	void setListenPort(int listenPort);
 
-	int getSock();
-	void setSock(int sock);
+	int getReceiveSock();
+	void setReceiveSock(int sock);
+	int getSendSock();
+	void setSendSock(int sock);
 
 	pthread_t* getWorker();
 	void setWorker(pthread_t* worker);
