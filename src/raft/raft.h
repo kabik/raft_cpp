@@ -3,10 +3,12 @@
 
 #include <vector>
 #include <chrono>
+#include <mutex>
 
 using std::vector;
 using std::chrono::high_resolution_clock;
 using std::chrono::microseconds;
+using std::mutex;
 
 class Config;
 class Status;
@@ -20,6 +22,8 @@ typedef struct _worker_args {
 
 class Raft {
 private:
+	mutex _mtx;
+
 	Config* config;
 	Status* status;
 	vector<RaftNode*>* raftNodes;

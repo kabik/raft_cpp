@@ -48,8 +48,12 @@ void Log::add(int term, char command[COMMAND_STR_LENGTH]) {
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
 
+	_mtx.lock();
+
 	auto out = this->getOFStream(true);
 	*out << str << endl;
 
 	this->_log.push_back(e);
+
+	_mtx.unlock();
 }

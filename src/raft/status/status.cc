@@ -62,7 +62,9 @@ State Status::getState() {
 	return this->state;
 }
 void Status::setState(State state) {
+	_mtx.lock();
 	this->state = state;
+	_mtx.unlock();
 }
 bool Status::isFollower() {
 	return this->state == FOLLOWER;
@@ -74,13 +76,19 @@ bool Status::isLeader() {
 	return this->state == LEADER;
 }
 void Status::becomeFollower() {
+	_mtx.lock();
 	this->state = FOLLOWER;
+	_mtx.unlock();
 }
 void Status::becomeCandidate() {
+	_mtx.lock();
 	this->state = CANDIDATE;
+	_mtx.unlock();
 }
 void Status::becomeLeader() {
+	_mtx.lock();
 	this->state = LEADER;
+	_mtx.unlock();
 }
 
 int Status::getCurrentTerm() {

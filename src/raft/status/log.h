@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "../../fileHandler.h"
 #include "entry.cc"
@@ -12,6 +13,7 @@ using std::vector;
 
 class Log : public FileHandler {
 private:
+	std::mutex _mtx;
 	vector<entry* > _log;
 
 public:

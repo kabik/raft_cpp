@@ -1,6 +1,8 @@
 #ifndef STATUS_H
 #define STATUS_H
 
+#include <mutex>
+
 #include "../state.h"
 
 using std::string;
@@ -10,6 +12,8 @@ class Log;
 
 class Status {
 private:
+	std::mutex _mtx;
+
 	string* storageDirectoryName;
 	Log* log;
 	State state;

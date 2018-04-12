@@ -209,7 +209,9 @@ int Raft::getVote() {
 	return this->vote;
 }
 void Raft::setVote(int vote) {
+	_mtx.lock();
 	this->vote = vote;
+	_mtx.unlock();
 }
 
 int Raft::getLeaderTerm() {
