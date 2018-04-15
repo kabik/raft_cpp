@@ -25,6 +25,8 @@ public:
 	bool match(int index, int term);
 	entry* get(int index);
 	void add(int term, char command[COMMAND_STR_LENGTH]);
+
+	void printAll();
 };
 
 #include "log.cc"

@@ -19,6 +19,9 @@
 #define ENTRIES_STR_LENGTH             1024
 #define ENTRY_STR_LENGTH               32
 #define COMMAND_STR_LENGTH             22
+#define COMMAND_KIND_LENGTH            3
+#define KEY_LENGTH                     8
+#define VALUE_LENGTH                   8
 
 // timeout related
 #define MIN_TIMEOUTTIME_MICROSECONDS   250000  // 0.25 sec

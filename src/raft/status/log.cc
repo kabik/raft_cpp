@@ -25,7 +25,9 @@ int Log::lastLogTerm() {
 }
 
 bool Log::match(int index, int term) {
-	if (index == -1 && this->lastLogIndex() == -1) {
+	if (index == -1 && this->lastLogIndex() == -1 ||
+		index > this->lastLogIndex()
+	) {
 		return true;
 	}
 
@@ -42,18 +44,32 @@ entry* Log::get(int index) {
 }
 
 void Log::add(int term, char command[COMMAND_STR_LENGTH]) {
+	// set string
 	entry* e = (entry*)malloc(sizeof(entry));
 	e->term = term;
-	memcpy(command, e->command, COMMAND_STR_LENGTH);
+	memcpy(e->command, command, COMMAND_STR_LENGTH);
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
 
+	// add to log
 	_mtx.lock();
 
 	auto out = this->getOFStream(true);
 	*out << str << endl;
-
 	this->_log.push_back(e);
 
 	_mtx.unlock();
+
+	// print
+	printAll();
+}
+
+void Log::printAll() {
+	cout << "---log---\n";
+	for (entry* e : this->_log) {
+		char str[ENTRY_STR_LENGTH];
+		entry2str(e, str);
+		cout << str << endl;
+	}
+	cout << "------\n";
 }

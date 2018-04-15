@@ -11,12 +11,15 @@
 #include "raft.h"
 #include "../config.h"
 #include "status/status.h"
+#include "status/entry.cc";
 #include "node/raftnode.h"
 #include "state.h"
 #include "constant.h"
 #include "rpc.cc"
 #include "../functions.cc"
 
+
+using std::cin;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -191,6 +194,39 @@ void Raft::setRaftNodesByConfig() {
 	freeifaddrs(ifa_list);
 }
 
+void Raft::cli() {
+	char cKind[COMMAND_KIND_LENGTH];
+	char key[KEY_LENGTH];
+	int value;
+
+	while (1) {
+		cout << "> ";
+		string s;
+		getline(cin, s);
+
+		if (this->getStatus()->isLeader()) {
+			vector<string> vec = split(s, ' ');
+			vec[0].copy(cKind, COMMAND_KIND_LENGTH);
+			vec[1].copy(key  , KEY_LENGTH);
+			if (vec.size() > 2) { value = stoi(vec[2]); }
+
+			// add to log
+			char command[COMMAND_STR_LENGTH];
+			if (vec.size() > 2) {
+				sprintf(command, "%s %s %d", cKind, key, value);
+			} else {
+				sprintf(command, "%s %s"   , cKind, key);
+			}
+			int cTerm = this->getStatus()->getCurrentTerm();
+			this->getStatus()->getLog()->add(cTerm, command);
+
+			cout << "command = " << command << endl;
+		} else {
+			cout << "I am NOT LEADER!\n";
+		}
+	}
+}
+
 vector<RaftNode*>* Raft::getRaftNodes() {
 	return this->raftNodes;
 }
@@ -290,7 +326,7 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 
 	// check valid appendEntriesRPC or not
 	if (currentTerm > arpc->term ||
-		!log->match(arpc->prevLogIndex, arpc->prevLogIndex)) {
+		!log->match(arpc->prevLogIndex, arpc->prevLogTerm)) {
 		grant = false;
 	}
 	if (raft->getStatus()->isCandidate() && currentTerm <= arpc->term) {
@@ -454,7 +490,7 @@ static void* work(void* args) {
 			exit(1);
 		}
 		RPCKind rpcKind = discernRPC(buf);
-		cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
+		//cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
 
 		if        (rpcKind == RPC_KIND_APPEND_ENTRIES) {
 			appendEntriesRecieved(raft, rNode, buf);

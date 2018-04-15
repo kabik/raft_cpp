@@ -45,6 +45,7 @@ public:
 	void receive();
 	void timer();
 	void resetTimeoutTime();
+	void cli();
 
 	bool isTimeout();
 	microseconds getDuration();
