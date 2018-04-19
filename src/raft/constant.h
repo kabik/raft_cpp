@@ -23,6 +23,10 @@
 #define KEY_LENGTH                     8
 #define VALUE_LENGTH                   8
 
+const static char ENTRIES_DELIMITER = '/';
+const static char ENTRY_DELIMITER   = ':';
+const static char COMMAND_DELIMITER = ',';
+
 // timeout related
 #define MIN_TIMEOUTTIME_MICROSECONDS   250000  // 0.25 sec
 #define MAX_TIMEOUTTIME_MICROSECONDS   500000  // 0.5  sec

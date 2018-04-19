@@ -13,8 +13,9 @@ typedef struct _entry {
 static void entry2str(entry* e, char str[ENTRY_STR_LENGTH]) {
 	sprintf(
 		str,
-		"%d %s",
+		"%d%c%s",
 		e->term,
+		ENTRY_DELIMITER,
 		e->command
 	);
 }

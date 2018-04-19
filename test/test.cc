@@ -97,5 +97,18 @@ int main() {
 	}
 	// === myrand() test ========= //
 
+	// === split() test ========= //
+	string spstr = "a:b:c";
+	char delim = ':';
+	vector<string> vec = split(spstr, delim);
+
+	cout << "------\n";
+	cout << "spstr = \"" << spstr << "\"\n";
+	cout << "spstr = \'" << delim << "\'\n";
+	for (int i = 0; i < vec.size(); i++) {
+		cout << "vec[" << i << "] = " << vec[i] << endl;
+	}
+	// === split() test ========= //
+
 	return 0;
 }

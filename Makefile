@@ -1,22 +1,22 @@
 CC := g++
 CFLAGS := -std=c++11 -pthread -g -Wall -Wextra -fdiagnostics-color=always
-OBJ_DIR := bin
+BIN_DIR := bin
 L := main
 RM := rm -ri
 
 all: $(L)
 
 %: src/%.cc
-	@if [ ! -d $(OBJ_DIR) ]; \
-		then echo "mkdir -p $(OBJ_DIR)"; mkdir -p $(OBJ_DIR); \
+	@if [ ! -d $(BIN_DIR) ]; \
+		then echo "mkdir -p $(BIN_DIR)"; mkdir -p $(BIN_DIR); \
 		fi
-	$(CC) $(CFLAGS) -O $< -o $(OBJ_DIR)/$@
+	$(CC) $(CFLAGS) -O $< -o $(BIN_DIR)/$@
 
 test: test/test.cc
-	@if [ ! -d $(OBJ_DIR) ]; \
-		then echo "mkdir -p $(OBJ_DIR)"; mkdir -p $(OBJ_DIR); \
+	@if [ ! -d $(BIN_DIR) ]; \
+		then echo "mkdir -p $(BIN_DIR)"; mkdir -p $(BIN_DIR); \
 		fi
-	$(CC) $(CFLAGS) -O $< -o $(OBJ_DIR)/$@
+	$(CC) $(CFLAGS) -O $< -o $(BIN_DIR)/$@
 
 clean:
-	$(RM) $(OBJ_DIR)
+	$(RM) $(BIN_DIR)

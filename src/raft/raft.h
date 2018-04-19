@@ -36,7 +36,7 @@ private:
 	/* === private functions === */
 	void setRaftNodesByConfig();
 
-	void appendEntriesRPC();
+	void sendAppendEntriesRPC(RaftNode* rNode, bool isHeartBeat);
 	void candidacy();
 
 public:

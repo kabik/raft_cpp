@@ -1,11 +1,12 @@
 #include "raftnode.h"
 
 RaftNode::RaftNode(string* hostname, int port) : Node(hostname, port) {
-	this->nextIndex = 0;
-	this->matchIndex = 0;
+	this->nextIndex  = 0;
+	this->matchIndex = -1;
+	this->sentIndex  = -1;
 	this->votedForMe = false;
-	this->rvrpcSent = false;
-	this->isme = false;
+	this->rvrpcSent  = false;
+	this->isme       = false;
 }
 
 int RaftNode::getID() {

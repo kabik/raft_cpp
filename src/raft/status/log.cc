@@ -17,33 +17,25 @@ int Log::lastLogIndex() {
 	return this->_log.size() - 1;
 }
 int Log::lastLogTerm() {
-	if (this->lastLogIndex() < 0) {
-		return -1;
-	} else {
-		return this->_log[this->lastLogIndex()]->term;
-	}
+	return this->getTerm(this->lastLogIndex());
+}
+
+int Log::getTerm(int index) {
+	return (index < 0 || index > this->lastLogIndex()) ?
+		-1 : this->get(index)->term;
 }
 
 bool Log::match(int index, int term) {
-	if (index == -1 && this->lastLogIndex() == -1 ||
-		index > this->lastLogIndex()
-	) {
-		return true;
-	}
-
-	entry* e = this->get(index);
-	if (!e) {
-		return false;
-	} else {
-		return term == this->get(index)->term;
-	}
+	return index < 0                    ||
+	       index > this->lastLogIndex() ||
+	       term == this->getTerm(index);
 }
 
 entry* Log::get(int index) {
 	return this->_log[index];
 }
 
-void Log::add(int term, char command[COMMAND_STR_LENGTH]) {
+void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	// set string
 	entry* e = (entry*)malloc(sizeof(entry));
 	e->term = term;

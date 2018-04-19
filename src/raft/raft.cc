@@ -106,15 +106,30 @@ void Raft::receive() {
 
 // to use timer thread
 void Raft::timer() {
+	Log* log = this->getStatus()->getLog();
 	this->resetStartTime();
 
 	while(1) {
-		if (this->getStatus()->isLeader() && this->getDuration().count() > HEARTBEAT_INTERVAL) {
-			//cout << "send appendEntriesRPC" << endl;
-			this->resetStartTime();
-			this->appendEntriesRPC();
+		// Leader
+		if (this->getStatus()->isLeader()) {
+			if (this->getDuration().count() > HEARTBEAT_INTERVAL) {
+				this->resetStartTime();
+				for (RaftNode* rNode : *this->getRaftNodes()) {
+					this->sendAppendEntriesRPC(rNode, true);
+				}
+			} else {
+				for (RaftNode* rNode : *this->getRaftNodes()) {
+					if (!rNode->isMe()                                &&
+					    log->lastLogIndex() >= rNode->getNextIndex()  &&
+					    rNode->getNextIndex() > rNode->getSentIndex()
+					) {
+						this->sendAppendEntriesRPC(rNode, false);
+					}
+				}
+			}
 		}
 
+		// All states
 		if (this->isTimeout()) {
 			cout << "timeout in term " << this->getStatus()->getCurrentTerm() << endl;
 			this->resetStartTime();
@@ -122,8 +137,6 @@ void Raft::timer() {
 				cout << "candidacy" << endl;
 				candidacy();
 			}
-		} else {
-
 		}
 	}
 }
@@ -205,7 +218,8 @@ void Raft::cli() {
 		getline(cin, s);
 
 		if (this->getStatus()->isLeader()) {
-			vector<string> vec = split(s, ' ');
+			vector<string> vec = split(s, COMMAND_DELIMITER);
+
 			vec[0].copy(cKind, COMMAND_KIND_LENGTH);
 			vec[1].copy(key  , KEY_LENGTH);
 			if (vec.size() > 2) { value = stoi(vec[2]); }
@@ -213,14 +227,13 @@ void Raft::cli() {
 			// add to log
 			char command[COMMAND_STR_LENGTH];
 			if (vec.size() > 2) {
-				sprintf(command, "%s %s %d", cKind, key, value);
+				sprintf(command, "%s%c%s%c%d", cKind, COMMAND_DELIMITER, key, COMMAND_DELIMITER, value);
 			} else {
-				sprintf(command, "%s %s"   , cKind, key);
+				sprintf(command, "%s%c%s"    , cKind, COMMAND_DELIMITER, key);
 			}
 			int cTerm = this->getStatus()->getCurrentTerm();
 			this->getStatus()->getLog()->add(cTerm, command);
 
-			cout << "command = " << command << endl;
 		} else {
 			cout << "I am NOT LEADER!\n";
 		}
@@ -258,24 +271,34 @@ void Raft::setLeaderTerm(int leaderTerm) {
 }
 
 /* === private functions === */
-void Raft::appendEntriesRPC() {
+void Raft::sendAppendEntriesRPC(RaftNode* rNode, bool isHeartBeat) {
+	Status* status = this->getStatus();
+
 	// send heartbeat
 	char msg[APPEND_ENTRIES_RPC_LENGTH];
 	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
+
+	int nextIndex = rNode->getNextIndex();
+	char entriesStr[ENTRIES_STR_LENGTH] = "";
+	entriesStr[0] = '\0';
+	if (!isHeartBeat) {
+		entry* e = status->getLog()->get(nextIndex);
+		entry2str(e, entriesStr);
+	}
+
 	arpcByFields(
-		arpc,
-		this->getStatus()->getCurrentTerm(),
-		this->getMe(),
-		this->getStatus()->getLog()->lastLogIndex(),
-		this->getStatus()->getLog()->lastLogTerm(),
-		this->getStatus()->getCommitIndex(),
-		""
+		arpc,                                    // append_entries_rpc* arpc
+		status->getCurrentTerm(),                // int term
+		this->getMe(),                           // int leaderId
+		nextIndex-1,                             // int prevLogIndex
+		status->getLog()->getTerm(nextIndex-1),  // int prevLogTerm
+		status->getCommitIndex(),                // int leaderCommit
+		entriesStr                               // char entries[ENTRIES_STR_LENGTH]
 	);
 	arpc2str(arpc, msg);
-	for (RaftNode* rNode : *this->getRaftNodes()) {
-		if (!rNode->isMe()) {
-			sendMessage(this, rNode, msg, APPEND_ENTRIES_RPC_LENGTH);
-		}
+	sendMessage(this, rNode, msg, APPEND_ENTRIES_RPC_LENGTH);
+	if (!isHeartBeat) {
+		rNode->setSentIndex(nextIndex);
 	}
 
 	free(arpc);
@@ -300,11 +323,11 @@ void Raft::candidacy() {
 			char msg[REQUEST_VOTE_RPC_LENGTH];
 			request_vote_rpc* rrpc = (request_vote_rpc*)malloc(sizeof(request_vote_rpc));
 			rrpcByFields(
-				rrpc,
-				this->getStatus()->getCurrentTerm(),
-				this->getMe(),
-				this->getStatus()->getLog()->lastLogIndex(),
-				this->getStatus()->getLog()->lastLogTerm()
+				rrpc,                                         // request_vote_rpc* rrpc
+				this->getStatus()->getCurrentTerm(),          // int term
+				this->getMe(),                                // int candidateId
+				this->getStatus()->getLog()->lastLogIndex(),  // int lastLogIndex
+				this->getStatus()->getLog()->lastLogTerm()    // int lastLogTerm
 			);
 			rrpc2str(rrpc, msg);
 			free(rrpc);
@@ -319,6 +342,7 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 	// prepare
 	bool grant = true;
 	int currentTerm = raft->getStatus()->getCurrentTerm();
+	Status* status = raft->getStatus();
 	Log* log = raft->getStatus()->getLog();
 
 	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
@@ -326,33 +350,53 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 
 	// check valid appendEntriesRPC or not
 	if (currentTerm > arpc->term ||
-		!log->match(arpc->prevLogIndex, arpc->prevLogTerm)) {
+		!log->match(arpc->prevLogIndex, arpc->prevLogTerm)
+	) {
 		grant = false;
 	}
-	if (raft->getStatus()->isCandidate() && currentTerm <= arpc->term) {
+	if (status->isCandidate() && currentTerm <= arpc->term) {
 		// become Follower
-		raft->getStatus()->becomeFollower();
+		status->becomeFollower();
 
 		// vote for the sender
 		raft->setVote(0);
-		raft->getStatus()->setVotedFor(arpc->leaderId);
+		status->setVotedFor(arpc->leaderId);
 
 		raft->setLeaderTerm(arpc->term);
 	}
 
 	// do if grant == true
 	if (grant) {
-		while(raft->getStatus()->getCurrentTerm() < arpc->term) {
-			raft->getStatus()->incrementCurrentTerm();
+		while(status->getCurrentTerm() < arpc->term) {
+			status->incrementCurrentTerm();
 		}
-		currentTerm = raft->getStatus()->getCurrentTerm();
+		currentTerm = status->getCurrentTerm();
 
-		if (!log->match(arpc->prevLogIndex, arpc->prevLogTerm)) {
-			// delete log[index] : index >= arpc->prevLogIndex
-		}
+		//if (log->lastLogIndex > arpc->prevLogIndex+1 )) {
+			// delete log[index] : index > arpc->prevLogIndex
+		//}
+
 		// push entries to log
+		if (arpc->entries[0] > 0) {
+			printf("arpc->entries[0] = %d\n", arpc->entries[0]);
+
+			char entryStr[ENTRY_STR_LENGTH];
+			memcpy(entryStr, arpc->entries, ENTRY_STR_LENGTH);
+
+			// split
+			vector<string> vec = split(entryStr, ENTRY_DELIMITER);
+
+			// add to log
+			int term = stoi(vec[0]);
+			if (term >= 0) {
+				log->add(term, vec[1].c_str());
+			}
+		}
 
 		// update commitIndex
+		if (arpc->leaderCommit > status->getCommitIndex()) {
+			status->setCommitIndex(std::min(arpc->leaderCommit, log->lastLogIndex()));
+		}
 	}
 
 	// send response to the Leader
@@ -412,6 +456,16 @@ static void requestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) {
 static void responceAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg) {
 	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
 	str2rae(msg, rae);
+
+	int nIndex = rNode->getNextIndex();
+	if (rae->success) {
+		if (nIndex+1 <= raft->getStatus()->getLog()->size()) {
+			nIndex++;
+		}
+	} else {
+		nIndex--;
+	}
+	rNode->setNextIndex(nIndex);
 
 	free(rae);
 }

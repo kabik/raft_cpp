@@ -22,9 +22,10 @@ public:
 	int size();
 	int lastLogIndex();
 	int lastLogTerm();
+	int getTerm(int index);
 	bool match(int index, int term);
 	entry* get(int index);
-	void add(int term, char command[COMMAND_STR_LENGTH]);
+	void add(int term, const char command[COMMAND_STR_LENGTH]);
 
 	void printAll();
 };
