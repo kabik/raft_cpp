@@ -378,8 +378,6 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 
 		// push entries to log
 		if (arpc->entries[0] > 0) {
-			printf("arpc->entries[0] = %d\n", arpc->entries[0]);
-
 			char entryStr[ENTRY_STR_LENGTH];
 			memcpy(entryStr, arpc->entries, ENTRY_STR_LENGTH);
 
@@ -481,6 +479,12 @@ static void responceRequestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) 
 		cout << "win the election at term " << raft->getStatus()->getCurrentTerm() << endl;
 		raft->setVote(0);
 		raft->getStatus()->becomeLeader();
+
+		for (RaftNode* r : *raft->getRaftNodes()) {
+			r->setNextIndex( raft->getStatus()->getLog()->size() );
+			r->setMatchIndex(-1);
+			r->setSentIndex(-1);
+		}
 	}
 
 	free(rrv);
@@ -492,7 +496,7 @@ static void sendMessage(Raft* raft, RaftNode* rNode, char* msg, int length) {
 }
 
 static void connect2raftnode(Raft* raft, RaftNode* rNode) {
-	// return if I already connect rNode
+	// return if I have already connected to rNode
 	if (rNode->getSendSock() > 0) {
 		return;
 	}
@@ -508,7 +512,7 @@ static void connect2raftnode(Raft* raft, RaftNode* rNode) {
 
 	if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
 		perror("connect");
-		exit(1);
+		//exit(1);
 	} else {
 		rNode->setSendSock(sock);
 	}
@@ -541,7 +545,10 @@ static void* work(void* args) {
 		memset(buf, 0, sizeof(buf));
 		if (recv(sock, buf, sizeof(buf), MSG_WAITALL) < 0) {
 			perror("recv");
-			exit(1);
+			//exit(1);
+			rNode->setReceiveSock(-1);
+			rNode->setSendSock(-1);
+			break;
 		}
 		RPCKind rpcKind = discernRPC(buf);
 		//cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";

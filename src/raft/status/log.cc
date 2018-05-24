@@ -1,12 +1,22 @@
 #include <iostream>
 
 #include "log.h"
+#include "entry.cc"
 
 using std::cout;
 using std::endl;
 
 Log::Log(string storageDirectoryName) : FileHandler(storageDirectoryName + "log") {
 	cout << "The Log file is \"" << this->getFileName() << "\"." << endl;
+
+	auto in = this->getIFStream();
+	char buf[ENTRY_STR_LENGTH];
+	entry* e = (entry*)malloc(sizeof(entry));
+	while(in && in->getline(buf, ENTRY_STR_LENGTH)) {
+		str2entry(e, buf);
+		this->_log.push_back(e);
+		printAll();
+	}
 }
 
 int Log::size() {
@@ -38,8 +48,7 @@ entry* Log::get(int index) {
 void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	// set string
 	entry* e = (entry*)malloc(sizeof(entry));
-	e->term = term;
-	memcpy(e->command, command, COMMAND_STR_LENGTH);
+	fields2entry(e, term, command);
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
 
