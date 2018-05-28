@@ -12,6 +12,18 @@ all: $(L)
 		fi
 	$(CC) $(CFLAGS) -O $< -o $(BIN_DIR)/$@
 
+client: src/client/client.cc
+	@if [ ! -d $(BIN_DIR) ]; \
+		then echo "mkdir -p $(BIN_DIR)"; mkdir -p $(BIN_DIR); \
+		fi
+	$(CC) $(CFLAGS) -O $< -o $(BIN_DIR)/$@
+
+createInput: src/client/createInput.cc
+	@if [ ! -d $(BIN_DIR) ]; \
+		then echo "mkdir -p $(BIN_DIR)"; mkdir -p $(BIN_DIR); \
+		fi
+	$(CC) $(CFLAGS) -O $< -o $(BIN_DIR)/$@
+
 test: test/test.cc
 	@if [ ! -d $(BIN_DIR) ]; \
 		then echo "mkdir -p $(BIN_DIR)"; mkdir -p $(BIN_DIR); \

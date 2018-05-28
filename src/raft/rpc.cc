@@ -6,20 +6,28 @@
 #include "constant.h"
 
 enum RPCKind {
-	RPC_KIND_APPEND_ENTRIES           = 0,
-	RPC_KIND_REQUEST_VOTE             = 1,
-	RPC_KIND_RESPONSE_APPEND_ENTRIES  = 2,
-	RPC_KIND_RESPONSE_REQUEST_VOTE    = 3,
+	RPC_KIND_APPEND_ENTRIES             = 0,
+	RPC_KIND_REQUEST_VOTE               = 1,
+	RPC_KIND_RESPONSE_APPEND_ENTRIES    = 2,
+	RPC_KIND_RESPONSE_REQUEST_VOTE      = 3,
+	RPC_KIND_REQUEST_LOCATION           = 4,
+	RPC_KIND_RESPONSE_REQUEST_LOCATION  = 5,
+	RPC_KIND_CLIENT_COMMAND             = 6,
+	RPC_KIND_COMMIT                     = 7,
 };
 
 struct StrRPCKind : public std::string {
 	StrRPCKind(RPCKind r) {
 		switch(r) {
-		break; case RPC_KIND_APPEND_ENTRIES          : { assign("RPC_KIND_APPEND_ENTRIES"         ); }
-		break; case RPC_KIND_REQUEST_VOTE            : { assign("RPC_KIND_REQUEST_VOTE"           ); }
-		break; case RPC_KIND_RESPONSE_APPEND_ENTRIES : { assign("RPC_KIND_RESPONSE_APPEND_ENTRIES"); }
-		break; case RPC_KIND_RESPONSE_REQUEST_VOTE   : { assign("RPC_KIND_RESPONSE_REQUEST_VOTE"  ); }
-		break; default                               : { assign("illegal rpc kind"                ); }
+		break; case RPC_KIND_APPEND_ENTRIES            : { assign("RPC_KIND_APPEND_ENTRIES"           ); }
+		break; case RPC_KIND_REQUEST_VOTE              : { assign("RPC_KIND_REQUEST_VOTE"             ); }
+		break; case RPC_KIND_RESPONSE_APPEND_ENTRIES   : { assign("RPC_KIND_RESPONSE_APPEND_ENTRIES"  ); }
+		break; case RPC_KIND_RESPONSE_REQUEST_VOTE     : { assign("RPC_KIND_RESPONSE_REQUEST_VOTE"    ); }
+		break; case RPC_KIND_REQUEST_LOCATION          : { assign("RPC_KIND_REQUEST_LOCATION"         ); }
+		break; case RPC_KIND_RESPONSE_REQUEST_LOCATION : { assign("RPC_KIND_RESPONSE_REQUEST_LOCATION"); }
+		break; case RPC_KIND_CLIENT_COMMAND            : { assign("RPC_KIND_CLIENT_COMMAND"           ); }
+		break; case RPC_KIND_COMMIT                    : { assign("RPC_KIND_COMMIT"                   ); }
+		break; default                                 : { assign("illegal rpc kind"                  ); }
 		}
 	}
 };

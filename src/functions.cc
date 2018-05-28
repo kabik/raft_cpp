@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include <string.h>
 #include <sstream>
 #include <errno.h>
 #include <unistd.h>

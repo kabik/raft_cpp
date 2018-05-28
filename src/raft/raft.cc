@@ -489,6 +489,10 @@ static void responceRequestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) 
 
 	free(rrv);
 }
+static void requestLocationReceived(Raft* raft, RaftNode* rNode, char* msg) {
+}
+static void clientCommandReceived(Raft* raft, RaftNode* rNode, char* msg) {
+}
 
 static void sendMessage(Raft* raft, RaftNode* rNode, char* msg, int length) {
 	connect2raftnode(raft, rNode);
@@ -564,6 +568,12 @@ static void* work(void* args) {
 
 		} else if (rpcKind == RPC_KIND_RESPONSE_REQUEST_VOTE) {
 			responceRequestVoteReceived(raft, rNode, buf);
+
+		} else if (rpcKind == RPC_KIND_REQUEST_LOCATION) {
+			requestLocationReceived(raft, rNode, buf);
+
+		} else if (rpcKind == RPC_KIND_CLIENT_COMMAND) {
+			clientCommandReceived(raft, rNode, buf);
 
 		}
 	}
