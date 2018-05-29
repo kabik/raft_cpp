@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <signal.h>
 
 #include "raft/raft.h"
 
@@ -16,6 +17,9 @@ int main(int argc, char* argv[]) {
 		cout << "Please specify a config file name." << endl;
 		return 0;
 	}
+
+	// not stop when this process gets SIGPIPE
+	signal(SIGPIPE, SIG_IGN);
 
 	if (auto raft = std::make_shared<Raft>(argv[1])) {
 		auto receiveThread = thread([&raft]{ raft->receive(); });

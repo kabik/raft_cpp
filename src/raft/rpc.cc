@@ -19,7 +19,7 @@ struct StrRPCKind : public std::string {
 		break; case RPC_KIND_REQUEST_VOTE            : { assign("RPC_KIND_REQUEST_VOTE"           ); }
 		break; case RPC_KIND_RESPONSE_APPEND_ENTRIES : { assign("RPC_KIND_RESPONSE_APPEND_ENTRIES"); }
 		break; case RPC_KIND_RESPONSE_REQUEST_VOTE   : { assign("RPC_KIND_RESPONSE_REQUEST_VOTE"  ); }
-		break; default                               : { assign("illegal rpc kind"                ); }
+		break; default                               : { assign("ILLEGAL RPC KIND"                ); }
 		}
 	}
 };
