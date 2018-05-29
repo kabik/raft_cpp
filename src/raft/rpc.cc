@@ -27,7 +27,7 @@ struct StrRPCKind : public std::string {
 		break; case RPC_KIND_RESPONSE_REQUEST_LOCATION : { assign("RPC_KIND_RESPONSE_REQUEST_LOCATION"); }
 		break; case RPC_KIND_CLIENT_COMMAND            : { assign("RPC_KIND_CLIENT_COMMAND"           ); }
 		break; case RPC_KIND_COMMIT                    : { assign("RPC_KIND_COMMIT"                   ); }
-		break; default                                 : { assign("illegal rpc kind"                  ); }
+		break; default                                 : { assign("ILLEGAL RPC KIND"                ); }
 		}
 	}
 };

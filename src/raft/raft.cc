@@ -115,7 +115,9 @@ void Raft::timer() {
 			if (this->getDuration().count() > HEARTBEAT_INTERVAL) {
 				this->resetStartTime();
 				for (RaftNode* rNode : *this->getRaftNodes()) {
-					this->sendAppendEntriesRPC(rNode, true);
+					if (!rNode->isMe()) {
+						this->sendAppendEntriesRPC(rNode, true);
+					}
 				}
 			} else {
 				for (RaftNode* rNode : *this->getRaftNodes()) {
@@ -305,8 +307,6 @@ void Raft::sendAppendEntriesRPC(RaftNode* rNode, bool isHeartBeat) {
 }
 
 void Raft::candidacy() {
-	this->resetTimeoutTime();
-
 	// become candidate
 	this->getStatus()->becomeCandidate();
 
@@ -334,6 +334,7 @@ void Raft::candidacy() {
 			sendMessage(this, rNode, msg, REQUEST_VOTE_RPC_LENGTH);
 		}
 	}
+	cout << "candidacy finished.\n";
 }
 
 static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
@@ -451,7 +452,7 @@ static void requestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) {
 	free(rrpc);
 	free(rrv);
 }
-static void responceAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg) {
+static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg) {
 	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
 	str2rae(msg, rae);
 
@@ -467,7 +468,7 @@ static void responceAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 
 	free(rae);
 }
-static void responceRequestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) {
+static void responseRequestVoteReceived(Raft* raft, RaftNode* rNode, char* msg) {
 	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
 	str2rrv(msg, rrv);
 
@@ -516,7 +517,6 @@ static void connect2raftnode(Raft* raft, RaftNode* rNode) {
 
 	if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
 		perror("connect");
-		//exit(1);
 	} else {
 		rNode->setSendSock(sock);
 	}
@@ -549,25 +549,31 @@ static void* work(void* args) {
 		memset(buf, 0, sizeof(buf));
 		if (recv(sock, buf, sizeof(buf), MSG_WAITALL) < 0) {
 			perror("recv");
-			//exit(1);
 			rNode->setReceiveSock(-1);
-			rNode->setSendSock(-1);
 			break;
+		}
+		if (buf[0] == '\0') {
+			continue;
 		}
 		RPCKind rpcKind = discernRPC(buf);
 		//cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
 
-		if        (rpcKind == RPC_KIND_APPEND_ENTRIES) {
+		if (rpcKind < 0) {
+			cout << "illegal rpc" << endl;
+			rNode->setReceiveSock(-1);
+			break;
+
+		} else if (rpcKind == RPC_KIND_APPEND_ENTRIES) {
 			appendEntriesRecieved(raft, rNode, buf);
 
 		} else if (rpcKind == RPC_KIND_REQUEST_VOTE) {
 			requestVoteReceived(raft, rNode, buf);
 
 		} else if (rpcKind == RPC_KIND_RESPONSE_APPEND_ENTRIES) {
-			responceAppendEntriesReceived(raft, rNode, buf);
+			responseAppendEntriesReceived(raft, rNode, buf);
 
 		} else if (rpcKind == RPC_KIND_RESPONSE_REQUEST_VOTE) {
-			responceRequestVoteReceived(raft, rNode, buf);
+			responseRequestVoteReceived(raft, rNode, buf);
 
 		} else if (rpcKind == RPC_KIND_REQUEST_LOCATION) {
 			requestLocationReceived(raft, rNode, buf);
