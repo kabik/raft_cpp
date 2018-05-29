@@ -8,13 +8,11 @@ Node::Node(string* hostname, int listenPort) {
 }
 
 void Node::send(char* message, int length) {
-	//cout << "send message to " << this->getHostname() << " [" << message << "]\n";
+	//cout << "send message to " << this->getHostname() << " [" << message << "] sock=" << sendSock << endl;
 	if (write(this->getSendSock(), message, length) < 0) {
 		perror("write");
-		//exit(1);
-		this->receiveSock = -1;
 		this->sendSock = -1;
-		cout << "node: " << this->getHostname() << endl;
+		cout << "node is " << this->getHostname() << endl;
 	}
 }
 
