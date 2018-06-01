@@ -13,7 +13,7 @@ enum RPCKind {
 	RPC_KIND_REQUEST_LOCATION           = 4,
 	RPC_KIND_RESPONSE_REQUEST_LOCATION  = 5,
 	RPC_KIND_CLIENT_COMMAND             = 6,
-	RPC_KIND_COMMIT                     = 7,
+	RPC_KIND_COMMIT_MESSAGE             = 7,
 };
 
 struct StrRPCKind : public std::string {
@@ -26,8 +26,8 @@ struct StrRPCKind : public std::string {
 		break; case RPC_KIND_REQUEST_LOCATION          : { assign("RPC_KIND_REQUEST_LOCATION"         ); }
 		break; case RPC_KIND_RESPONSE_REQUEST_LOCATION : { assign("RPC_KIND_RESPONSE_REQUEST_LOCATION"); }
 		break; case RPC_KIND_CLIENT_COMMAND            : { assign("RPC_KIND_CLIENT_COMMAND"           ); }
-		break; case RPC_KIND_COMMIT                    : { assign("RPC_KIND_COMMIT"                   ); }
-		break; default                                 : { assign("ILLEGAL RPC KIND"                ); }
+		break; case RPC_KIND_COMMIT_MESSAGE            : { assign("RPC_KIND_COMMIT_MESSAGE"           ); }
+		break; default                                 : { assign("ILLEGAL RPC KIND"                  ); }
 		}
 	}
 };
@@ -61,6 +61,26 @@ typedef struct _response_request_vote {
 	int term;
 	bool success;
 } response_request_vote;
+
+typedef struct _request_location {
+	RPCKind rpcKind;
+} request_location;
+
+typedef struct _response_request_location {
+	RPCKind rpcKind;
+	char hostname[HOSTNAME_LENGTH];
+	int port;
+} response_request_location;
+
+typedef struct _client_command {
+	RPCKind rpcKind;
+	char command[COMMAND_STR_LENGTH];
+} client_command;
+
+typedef struct _commit_message {
+	RPCKind rpcKind;
+	char message[COMMIT_MESSAGE_LENGTH];
+} commit_message;
 
 RPCKind discernRPC(char* str) {
 	char c = str[0];
@@ -126,8 +146,44 @@ void rrvByFields(
 	rrv->success = success;
 }
 
+// create request_location by fields
+void rlByFields(
+	request_location* rl
+) {
+	rl->rpcKind = RPC_KIND_REQUEST_LOCATION;
+}
+
+// create response_request_location by fields
+void rrlByFields(
+	response_request_location* rrl,
+	const char hostname[HOSTNAME_LENGTH],
+	int port
+) {
+	rrl->rpcKind = RPC_KIND_RESPONSE_REQUEST_LOCATION;
+	memcpy(rrl->hostname, hostname, HOSTNAME_LENGTH);
+	rrl->port = port;
+}
+
+// create client_command by fields
+void ccByFields(
+	client_command* cc,
+	const char command[COMMAND_STR_LENGTH]
+) {
+	cc->rpcKind = RPC_KIND_CLIENT_COMMAND;
+	memcpy(cc->command, command, COMMAND_STR_LENGTH);
+}
+
+// create commit_message by fields
+void cmByFields(
+	commit_message* cm,
+	char message[COMMIT_MESSAGE_LENGTH]
+) {
+	cm->rpcKind = RPC_KIND_COMMIT_MESSAGE;
+	memcpy(cm->message, message, COMMIT_MESSAGE_LENGTH);
+}
+
 // char[] to append_entries_rpc
-void str2arpc(char str[RESPONSE_APPEND_ENTRIES_LENGTH], append_entries_rpc* arpc) {
+void str2arpc(char str[MESSAGE_SIZE], append_entries_rpc* arpc) {
 	sscanf(
 		str,
 		"%d %d %d %d %d %d %s",
@@ -142,7 +198,7 @@ void str2arpc(char str[RESPONSE_APPEND_ENTRIES_LENGTH], append_entries_rpc* arpc
 }
 
 // char[] to request_vote_rpc
-void str2rrpc(char str[REQUEST_VOTE_RPC_LENGTH], request_vote_rpc* rrpc) {
+void str2rrpc(char str[MESSAGE_SIZE], request_vote_rpc* rrpc) {
 	sscanf(
 		str,
 		"%d %d %d %d %d",
@@ -155,7 +211,7 @@ void str2rrpc(char str[REQUEST_VOTE_RPC_LENGTH], request_vote_rpc* rrpc) {
 }
 
 // char[] to response_append_entries
-void str2rae(char str[RESPONSE_APPEND_ENTRIES_LENGTH], response_append_entries* rae) {
+void str2rae(char str[MESSAGE_SIZE], response_append_entries* rae) {
 	sscanf(
 		str,
 		"%d %d %d",
@@ -166,7 +222,7 @@ void str2rae(char str[RESPONSE_APPEND_ENTRIES_LENGTH], response_append_entries* 
 }
 
 // char[] to response_request_vote
-void str2rrv(char str[RESPONSE_REQUEST_VOTE_LENGTH], response_request_vote* rrv) {
+void str2rrv(char str[MESSAGE_SIZE], response_request_vote* rrv) {
 	sscanf(
 		str,
 		"%d %d %d",
@@ -176,8 +232,48 @@ void str2rrv(char str[RESPONSE_REQUEST_VOTE_LENGTH], response_request_vote* rrv)
 	);
 }
 
+// char[] to request_location
+void str2rl(char str[MESSAGE_SIZE], request_location* rl) {
+	sscanf(
+		str,
+		"%d",
+		&rl->rpcKind
+	);
+}
+
+// char[] to response_request_location
+void str2rrl(char str[MESSAGE_SIZE], response_request_location* rrl) {
+	sscanf(
+		str,
+		"%d %s %d",
+		&rrl->rpcKind,
+		&rrl->hostname,
+		&rrl->port
+	);
+}
+
+// char[] to client_command
+void str2cc(char str[MESSAGE_SIZE], client_command* cc) {
+	sscanf(
+		str,
+		"%d %s",
+		&cc->rpcKind,
+		&cc->command
+	);
+}
+
+// char[] to commit_message
+void str2cm(char str[MESSAGE_SIZE], commit_message* cm) {
+	sscanf(
+		str,
+		"%d %s",
+		&cm->rpcKind,
+		&cm->message
+	);
+}
+
 // append_entries_rpc to char[]
-void arpc2str(append_entries_rpc* arpc, char str[APPEND_ENTRIES_RPC_LENGTH]) {
+void arpc2str(append_entries_rpc* arpc, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
 		"%d %d %d %d %d %d %s",
@@ -192,7 +288,7 @@ void arpc2str(append_entries_rpc* arpc, char str[APPEND_ENTRIES_RPC_LENGTH]) {
 }
 
 // request_vote_rpc to char[]
-void rrpc2str(request_vote_rpc* rrpc, char str[REQUEST_VOTE_RPC_LENGTH]) {
+void rrpc2str(request_vote_rpc* rrpc, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
 		"%d %d %d %d %d",
@@ -205,7 +301,7 @@ void rrpc2str(request_vote_rpc* rrpc, char str[REQUEST_VOTE_RPC_LENGTH]) {
 }
 
 // response_append_entries to char[]
-void rae2str(response_append_entries* rae, char str[RESPONSE_APPEND_ENTRIES_LENGTH]) {
+void rae2str(response_append_entries* rae, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
 		"%d %d %d",
@@ -216,13 +312,53 @@ void rae2str(response_append_entries* rae, char str[RESPONSE_APPEND_ENTRIES_LENG
 }
 
 // response_request_vote to char[]
-void rrv2str(response_request_vote* rrv, char str[RESPONSE_REQUEST_VOTE_LENGTH]) {
+void rrv2str(response_request_vote* rrv, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
 		"%d %d %d",
 		rrv->rpcKind,
 		rrv->term,
 		rrv->success
+	);
+}
+
+// request_location to char[]
+void rl2str(request_location* rl, char str[MESSAGE_SIZE]) {
+	sprintf(
+		str,
+		"%d",
+		rl->rpcKind
+	);
+}
+
+// response_request_location to char[]
+void rrl2str(response_request_location* rrl, char str[MESSAGE_SIZE]) {
+	sprintf(
+		str,
+		"%d %s %d",
+		rrl->rpcKind,
+		rrl->hostname,
+		rrl->port
+	);
+}
+
+// client_command to char[]
+void cc2str(client_command* cc, char str[MESSAGE_SIZE]) {
+	sprintf(
+		str,
+		"%d %s",
+		cc->rpcKind,
+		cc->command
+	);
+}
+
+// commit_message to char[]
+void cm2str(commit_message* cm, char str[MESSAGE_SIZE]) {
+	sprintf(
+		str,
+		"%d %s",
+		cm->rpcKind,
+		cm->message
 	);
 }
 

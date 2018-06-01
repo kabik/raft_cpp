@@ -1,25 +1,18 @@
 #ifndef CONSTANT_H
 #define CONSTANT_H
 
+// hostname
+#define HOSTNAME_LENGTH                100
+
 // communication related
-#define BUFFER_SIZE                    2048
+#define MESSAGE_SIZE                   2048
 
 // RPC's message length related
-/*
-#define APPEND_ENTRIES_RPC_LENGTH      1024
-#define REQUEST_VOTE_RPC_LENGTH        2048
-#define RESPONSE_APPEND_ENTRIES_LENGTH 16
-#define RESPONSE_REQUEST_VOTE_LENGTH   16
-*/
-#define APPEND_ENTRIES_RPC_LENGTH      2048
-#define REQUEST_VOTE_RPC_LENGTH        2048
-#define RESPONSE_APPEND_ENTRIES_LENGTH 2048
-#define RESPONSE_REQUEST_VOTE_LENGTH   2048
-
 #define ENTRIES_STR_LENGTH             1024
 #define ENTRY_STR_LENGTH               32
 #define COMMAND_STR_LENGTH             22
 #define COMMAND_KIND_LENGTH            3
+#define COMMIT_MESSAGE_LENGTH          32
 #define KEY_LENGTH                     8
 #define VALUE_LENGTH                   8
 
