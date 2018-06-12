@@ -14,10 +14,13 @@ class Config;
 class Status;
 class Raft;
 class RaftNode;
+class ClientNode;
 
 typedef struct _worker_args {
 	Raft* raft;
 	RaftNode* rNode;
+	ClientNode* cNode;
+	bool isClient;
 } worker_args;
 
 class Raft {
@@ -56,6 +59,7 @@ public:
 
 	vector<RaftNode*>* getRaftNodes();
 	RaftNode* getRaftNodeById(int id);
+	RaftNode* getLeader();
 
 	void setMe(int me);
 	int getMe();

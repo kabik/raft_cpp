@@ -12,7 +12,7 @@ void Node::send(char* message, int length) {
 	if (write(this->getSendSock(), message, length) < 0) {
 		perror("write");
 		this->sendSock = -1;
-		cout << "node is " << this->getHostname() << endl;
+		cout << "    node is " << this->getHostname() << endl;
 	}
 }
 

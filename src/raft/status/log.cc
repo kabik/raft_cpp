@@ -62,7 +62,8 @@ void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	_mtx.unlock();
 
 	// print
-	printAll();
+	cout << str << endl;
+	//printAll();
 }
 
 void Log::printAll() {
