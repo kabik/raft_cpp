@@ -101,7 +101,7 @@ void Raft::receive() {
 				startWorkerThread(this, rNode, NULL, false);
 				isClient = false;
 
-				cout << rNode->getHostname() << " connected from a Raft Node. (sock=" << sock << ")\n";
+				cout << rNode->getHostname() << " connected(Raft Node). (sock=" << sock << ")\n";
 			}
 		}
 		// if client
@@ -112,7 +112,7 @@ void Raft::receive() {
 			cNode->setSendSock(sock);
 			startWorkerThread(this, NULL, cNode, true);
 
-			cout << cNode->getHostname() << " connected from a Client. (sock=" << sock << ")\n";
+			cout << cNode->getHostname() << " connected(Client Node). (sock=" << sock << ")\n";
 		}
 	}
 }
@@ -521,6 +521,25 @@ static void requestLocationReceived(Raft* raft, ClientNode* cNode, char* msg) {
 	free(rrl);
 }
 static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
+	client_command* cc = (client_command*)malloc(sizeof(client_command));
+	str2cc(msg, cc);
+
+	Status* status = raft->getStatus();
+	if (status->isLeader()) {
+		status->getLog()->add(status->getCurrentTerm(), cc->command);
+	} else {
+		cout << "I am NOT LEADER!\n";
+	}
+
+	commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
+	cmByFields(cm, 0);
+	char smsg[MESSAGE_SIZE];
+	cm2str(cm, smsg);
+	sendMessage(raft, cNode, smsg, MESSAGE_SIZE);
+	free(cm);
+	
+
+	free(cc);
 }
 
 static void sendMessage(Raft* raft, RaftNode* rNode, char* msg, int length) {
@@ -560,11 +579,11 @@ static void startWorkerThread(Raft* raft, RaftNode* rNode, ClientNode* cNode, bo
 	wargs->rNode    = rNode;
 	wargs->cNode    = cNode;
 	wargs->isClient = isClient;
+
 	if (pthread_create( &worker, NULL, work, (void*)wargs ) < 0) {
 		perror("pthread_create");
 		exit(1);
 	}
-	//rNode->setWorker(&worker);
 	pthread_detach(worker);
 }
 
@@ -611,7 +630,6 @@ static void* work(void* args) {
 			responseRequestVoteReceived(raft, rNode, buf);
 
 		} else if (rpcKind == RPC_KIND_REQUEST_LOCATION) {
-			cout << StrRPCKind(rpcKind) << " from " << cNode->getHostname().c_str() << ": [" << buf << "]\n";
 			requestLocationReceived(raft, cNode, buf);
 
 		} else if (rpcKind == RPC_KIND_CLIENT_COMMAND) {

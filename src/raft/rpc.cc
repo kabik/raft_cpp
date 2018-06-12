@@ -79,7 +79,7 @@ typedef struct _client_command {
 
 typedef struct _commit_message {
 	RPCKind rpcKind;
-	char message[COMMIT_MESSAGE_LENGTH];
+	int commitIndex;
 } commit_message;
 
 RPCKind discernRPC(char* str) {
@@ -176,10 +176,10 @@ void ccByFields(
 // create commit_message by fields
 void cmByFields(
 	commit_message* cm,
-	char message[COMMIT_MESSAGE_LENGTH]
+	int commitIndex
 ) {
 	cm->rpcKind = RPC_KIND_COMMIT_MESSAGE;
-	memcpy(cm->message, message, COMMIT_MESSAGE_LENGTH);
+	cm->commitIndex = commitIndex;
 }
 
 // char[] to append_entries_rpc
@@ -266,9 +266,9 @@ void str2cc(char str[MESSAGE_SIZE], client_command* cc) {
 void str2cm(char str[MESSAGE_SIZE], commit_message* cm) {
 	sscanf(
 		str,
-		"%d %s",
+		"%d %d",
 		&cm->rpcKind,
-		&cm->message
+		&cm->commitIndex
 	);
 }
 
@@ -356,9 +356,9 @@ void cc2str(client_command* cc, char str[MESSAGE_SIZE]) {
 void cm2str(commit_message* cm, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
-		"%d %s",
+		"%d %d",
 		cm->rpcKind,
-		cm->message
+		cm->commitIndex
 	);
 }
 

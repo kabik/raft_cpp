@@ -57,16 +57,16 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-	int host_max_length = 100;
-	char buf2[host_max_length];
-	char host[host_max_length];
-	while (ifs2.getline(buf2, host_max_length)) {
+	char buf2[HOSTNAME_LENGTH];
+	char hostname_port[HOSTNAME_LENGTH]; // hostname:port
+	while (ifs2.getline(buf2, HOSTNAME_LENGTH)) {
 		if (strlen(buf2) > 0) {
-			strcpy(host, buf2);
+			strcpy(hostname_port, buf2);
 		}
 	}
-	vector<string> v = split(host, ':');
-	const char *hostname = v[0].c_str();
+	vector<string> v = split(hostname_port, ':');
+	char hostname[HOSTNAME_LENGTH]; // hostname
+	strcpy(hostname, v[0].c_str());
 	int port = stoi(v[1].c_str());
 
 	// connect to a raft server
@@ -87,24 +87,73 @@ int main(int argc, char* argv[]) {
 
 	// request leader location
 	request_location* rl = (request_location*)malloc(sizeof(request_location));
-	char msg[MESSAGE_SIZE];
+	char smsg[MESSAGE_SIZE];
 	rlByFields(rl);
-	rl2str(rl, msg);
-	if (write(sock, msg, MESSAGE_SIZE) < 0) {
+	rl2str(rl, smsg);
+	if (write(sock, smsg, MESSAGE_SIZE) < 0) {
 		perror("write");
 	}
 	free(rl);
 
 	// receive leader location
-	if (recv(sock, msg, MESSAGE_SIZE, MSG_WAITALL) < 0) {
+	char rmsg[MESSAGE_SIZE];
+	if (recv(sock, rmsg, MESSAGE_SIZE, MSG_WAITALL) < 0) {
 		perror("recv");
 	}
-	cout << msg << endl;
+	cout << rmsg << endl;
 
-	// send commands
-	for (string s: commandList) {
-		//cout << s << endl;
+	// connect to leader
+	response_request_location* rrl = (response_request_location*)malloc(sizeof(response_request_location));
+	str2rrl(rmsg, rrl);
+	cout << rrl->rpcKind << endl
+		<< rrl->hostname << endl
+		<< rrl->port << endl;
+	if (strcmp(hostname, rrl->hostname) != 0) {
+		close(sock);
+		cout << "connect to leader " << hostname << ":" << port << endl;
+
+		//struct sockaddr_in server;
+
+		sock = socket(AF_INET, SOCK_STREAM, 0);
+
+		server.sin_family = AF_INET;
+		server.sin_port = htons(rrl->port);
+		server.sin_addr.s_addr = inet_addr(rrl->hostname);
+
+		if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
+			perror("connect");
+			exit(1);
+		}
+	} else {
+		cout << "I have connected to leader.\n";
 	}
+	free(rrl);
+
+	// send commands and receive commit messages
+	client_command* cc = (client_command*)malloc(sizeof(client_command));
+	cc->rpcKind = RPC_KIND_CLIENT_COMMAND;
+
+	commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
+
+	for (int i = 0; i < commandList.size(); i++) {
+		strcpy(smsg, "");
+		strcpy(cc->command, commandList[i].c_str());
+		cc2str(cc, smsg);
+
+		if (write(sock, smsg, MESSAGE_SIZE) < 0) {
+			perror("write");
+			exit(1);
+		}
+		if (recv(sock, rmsg, sizeof(rmsg), MSG_WAITALL) < 0) {
+			perror("recv");
+			exit(1);
+		}
+
+		str2cm(rmsg, cm);
+		cout << "commit " << cm->commitIndex << endl;
+	}
+	free(cc);
+	free(cm);
 
 	ifs.close();
 	ifs2.close();
