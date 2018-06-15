@@ -11,12 +11,14 @@ Log::Log(string storageDirectoryName) : FileHandler(storageDirectoryName + "log"
 
 	auto in = this->getIFStream();
 	char buf[ENTRY_STR_LENGTH];
-	entry* e = (entry*)malloc(sizeof(entry));
 	while(in && in->getline(buf, ENTRY_STR_LENGTH)) {
+		entry* e = (entry*)malloc(sizeof(entry));
 		str2entry(e, buf);
 		this->_log.push_back(e);
-		printAll();
 	}
+	printAll();
+
+	closeIFStream();
 }
 
 int Log::size() {

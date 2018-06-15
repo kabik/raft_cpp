@@ -9,6 +9,8 @@
 
 FileHandler::FileHandler(string fileName) {
 	this->_fileName = new string(fileName);
+	this->_ifs = NULL;
+	this->_ofs = NULL;
 }
 
 ifstream* FileHandler::getIFStream() {

@@ -5,37 +5,17 @@
 
 class ClientNode : public Node {
 private:
-	int id;
-	int nextIndex;
-	int matchIndex;
-	int sentIndex;
-	bool isme;
-	bool votedForMe;
-	bool rvrpcSent;     // requestVoteRPC
+	int lastIndex;
+	int commitIndex;
 
 public:
 	ClientNode(string* hostname, int port);
 
-	int getID();
-	void setID(int id);
+	int getLastIndex();
+	void setLastIndex(int lastIndex);
 
-	int  getNextIndex();
-	void setNextIndex(int nextIndex);
-
-	int  getMatchIndex();
-	void setMatchIndex(int matchIndex);
-
-	int  getSentIndex();
-	void setSentIndex(int sentIndex);
-
-	bool isMe();
-	void setIsMe(bool isme);
-
-	bool hasVotedForMe();
-	void setVotedForMe(bool votedForMe);
-
-	bool IhaveSentRequestVoteRPC();
-	void setRequestVoteRPCSent(bool rvrpcSent);
+	int getCommitIndex();
+	void setCommitIndex(int commitIndex);
 };
 
 #include "clientnode.cc"
