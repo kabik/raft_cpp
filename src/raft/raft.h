@@ -30,6 +30,7 @@ private:
 	Config* config;
 	Status* status;
 	vector<RaftNode*>* raftNodes;
+	vector<ClientNode*>* clientNodes;
 	int me;
 	high_resolution_clock::time_point startTime;
 
@@ -60,6 +61,9 @@ public:
 	vector<RaftNode*>* getRaftNodes();
 	RaftNode* getRaftNodeById(int id);
 	RaftNode* getLeader();
+
+	vector<ClientNode*>* getClientNodes();
+	void addClientNode(ClientNode* cNode);
 
 	void setMe(int me);
 	int getMe();

@@ -21,8 +21,8 @@ const static char ENTRY_DELIMITER   = ':';
 const static char COMMAND_DELIMITER = ',';
 
 // timeout related
-#define MIN_TIMEOUTTIME_MICROSECONDS   500000  // 0.5   sec
-#define MAX_TIMEOUTTIME_MICROSECONDS   750000  // 0.75  sec
+#define MIN_TIMEOUTTIME_MICROSECONDS   1000000  // 1     sec
+#define MAX_TIMEOUTTIME_MICROSECONDS   1500000  // 1.5  sec
 
 // append entries rpc related
 #define HEARTBEAT_INTERVAL             50000   // 0.05 sec
