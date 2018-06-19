@@ -513,18 +513,17 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 	if (rae->success) {
 		if (nIndex < status->getLog()->size()) {
 			status->incrementSavedCount(nIndex);
-			//cout << "savedCounts[" << nIndex << "] = " << status->getSavedCount(nIndex) << endl;
 
 			if (status->getSavedCount(nIndex) > raft->getConfig()->getNumberOfNodes() / 2 &&
 				nIndex > status->getCommitIndex()
 			) {
 				status->setCommitIndex(nIndex);
-				//cout << "commitIndex = " << status->getCommitIndex() << endl;
 			}
 			nIndex++;
 		}
 	} else {
 		nIndex--;
+		rNode->setSentIndex(nIndex);
 	}
 	rNode->setNextIndex(nIndex);
 
@@ -649,7 +648,6 @@ static void* work(void* args) {
 			continue;
 		}
 		RPCKind rpcKind = discernRPC(buf);
-		//cout << StrRPCKind(rpcKind) << " from " << rNode->getHostname().c_str() << ": [" << buf << "]\n";
 
 		if (rpcKind < 0) {
 			cout << "illegal rpc" << endl;

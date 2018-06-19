@@ -39,7 +39,6 @@ int Log::getTerm(int index) {
 
 bool Log::match(int index, int term) {
 	return index < 0                    ||
-	       index > this->lastLogIndex() ||
 	       term == this->getTerm(index);
 }
 
