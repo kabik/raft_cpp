@@ -3,6 +3,7 @@
 
 #include "../src/raft/rpc.cc"
 #include "../src/functions.cc"
+#include "../src/kvs.h"
 
 using std::cout;
 using std::endl;
@@ -11,7 +12,7 @@ int main() {
 	// ======= RPC TEST ========== //
 	// append_entries_rpc
 	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
-	char sarpc[APPEND_ENTRIES_RPC_LENGTH] = "0 1 2 3 4 5 put,x,2,put,y,3";
+	char sarpc[MESSAGE_SIZE] = "0 1 2 3 4 5 put,x,2,put,y,3";
 	//str2arpc(sarpc, arpc);
 	arpcByFields(arpc, 1, 2, 3, 4, 5, "put,x,2,put,y,3");
 	cout
@@ -24,13 +25,13 @@ int main() {
 		<< STR(arpc->prevLogTerm)  << " = " << arpc->prevLogTerm         << endl
 		<< STR(arpc->leaderCommit) << " = " << arpc->leaderCommit        << endl
 		<< STR(arpc->entries)      << " = " << arpc->entries             << endl;
-	char sarpc2[APPEND_ENTRIES_RPC_LENGTH];
+	char sarpc2[MESSAGE_SIZE];
 	arpc2str(arpc, sarpc2);
 	cout << STR(sarpc2)	<< " = \"" << sarpc2 << "\"" << endl;
 	free(arpc);
 
 	// request_vote_rpc
-	char srrpc[REQUEST_VOTE_RPC_LENGTH] = "1 1 2 3 4";
+	char srrpc[MESSAGE_SIZE] = "1 1 2 3 4";
 	request_vote_rpc* rrpc = (request_vote_rpc*)malloc(sizeof(request_vote_rpc));
 	//str2rrpc(srrpc, rrpc);
 	rrpcByFields(rrpc, 1, 2, 3, 4);
@@ -42,13 +43,13 @@ int main() {
 		<< STR(rrpc->candidateId)  << " = " << rrpc->candidateId         << endl
 		<< STR(rrpc->lastLogIndex) << " = " << rrpc->lastLogIndex        << endl
 		<< STR(rrpc->lastLogTerm)  << " = " << rrpc->lastLogTerm         << endl;
-	char srrpc2[REQUEST_VOTE_RPC_LENGTH];
+	char srrpc2[MESSAGE_SIZE];
 	rrpc2str(rrpc, srrpc2);
 	cout << STR(srrpc2)	<< " = \"" << srrpc2 << "\"" << endl;
 	free(rrpc);
 
 	// response_append_entries
-	char srae[RESPONSE_APPEND_ENTRIES_LENGTH] = "2 1 1";
+	char srae[MESSAGE_SIZE] = "2 1 1";
 	response_append_entries* rae = (response_append_entries*)malloc(sizeof(response_append_entries));
 	//str2rae(srae, rae);
 	raeByFields(rae, 1, 1);
@@ -58,13 +59,13 @@ int main() {
 		<< STR(rae->rpcKind) << " = " << StrRPCKind(rae->rpcKind)   << endl
 		<< STR(rae->term)    << " = " << rae->term                  << endl
 		<< STR(rae->success) << " = " << rae->success               << endl;
-	char srae2[RESPONSE_APPEND_ENTRIES_LENGTH];
+	char srae2[MESSAGE_SIZE];
 	rae2str(rae, srae2);
 	cout << STR(srae2)	<< " = \"" << srae2 << "\"" << endl;
 	free(rae);
 
 	// response_request_vote
-	char srrv[RESPONSE_REQUEST_VOTE_LENGTH] = "3 1 1";
+	char srrv[MESSAGE_SIZE] = "3 1 1";
 	response_request_vote* rrv = (response_request_vote*)malloc(sizeof(response_request_vote));
 	//str2rrv(srrv, rrv);
 	rrvByFields(rrv, 1, 1);
@@ -74,7 +75,7 @@ int main() {
 		<< STR(rrv->rpcKind) << " = " << StrRPCKind(rrv->rpcKind) << endl
 		<< STR(rrv->term)    << " = " << rrv->term                << endl
 		<< STR(rrv->success) << " = " << rrv->success             << endl;
-	char srrv2[RESPONSE_REQUEST_VOTE_LENGTH];
+	char srrv2[MESSAGE_SIZE];
 	rrv2str(rrv, srrv2);
 	cout << STR(srrv2)	<< " = \"" << srrv2 << "\"" << endl;
 	free(rrv);
@@ -109,6 +110,18 @@ int main() {
 		cout << "vec[" << i << "] = " << vec[i] << endl;
 	}
 	// === split() test ========= //
+
+	// === KVS test ====== //
+	cout << "------\n";
+	KVS* kvs = new KVS();
+	kvs->put("a", "1");
+	kvs->del("a");
+	kvs->put("b", "1");
+	kvs->put("b", "2");
+
+	cout << "kvs->size() = " << kvs->size() << endl;
+	kvs->printAll();
+	// === KVS test ====== //
 
 	return 0;
 }

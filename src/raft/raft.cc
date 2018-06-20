@@ -10,6 +10,7 @@
 
 #include "raft.h"
 #include "../config.h"
+#include "../kvs.h"
 #include "status/status.h"
 #include "status/entry.cc";
 #include "node/raftnode.h"
@@ -45,6 +46,8 @@ Raft::Raft(char* configFileName) {
 	this->status = new Status(this->getConfig()->getStorageDirectoryName());
 	this->status->setState(FOLLOWER);
 	this->resetTimeoutTime();
+
+	this->kvs = new KVS();
 
 	// others
 	this->leaderTerm = this->status->getCurrentTerm();
