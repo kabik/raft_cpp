@@ -51,11 +51,11 @@ int main(int argc, char* argv[]) {
 	cout << "creating...";
 	std::random_device rnd;
 	for (int i = 0; i < num; i++) {
-		char key[KEY_LENGTH+1];
-		for (int j = 0; j < KEY_LENGTH; j++) {
+		char key[KEY_LENGTH];
+		for (int j = 0; j < KEY_LENGTH-1; j++) {
 			key[j] = 'a' + rnd() % 26;
 		}
-		key[KEY_LENGTH] = '\0';
+		key[KEY_LENGTH-1] = '\0';
 		ofs << "put" << COMMAND_DELIMITER << key << COMMAND_DELIMITER << i << endl;
 	}
 	cout << "done.\n";

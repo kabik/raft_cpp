@@ -76,6 +76,8 @@ public:
 
 	int getVote();
 	void setVote(int vote);
+
+	void apply(int index);
 };
 
 #include "raft.cc"

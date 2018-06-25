@@ -131,7 +131,7 @@ void Raft::timer() {
 
 	while(1) {
 		// Leader
-		if (this->getStatus()->isLeader()) {
+		if (status->isLeader()) {
 			if (this->getDuration().count() > HEARTBEAT_INTERVAL) {
 				this->resetStartTime();
 				for (RaftNode* rNode : *this->getRaftNodes()) {
@@ -152,36 +152,36 @@ void Raft::timer() {
 
 			// send commit message
 			for (ClientNode* cNode : *this->getClientNodes()) {
-				/*cout << "---------" << endl
-					<< status->getCommitIndex() << endl
-					<< cNode->getCommitIndex() << endl
-					<< cNode->getLastIndex() << endl
-					<< cNode->getCommitIndex() << endl;
-				*/
-
-				if (status->getCommitIndex() > cNode->getCommitIndex() &&
+				if (status->getLastApplied() > cNode->getCommitIndex() &&
 					cNode->getLastIndex() > cNode->getCommitIndex()
 				) {
 					commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
-					cmByFields(cm, 0);
+					cmByFields(cm, cNode->getCommitIndex());
 					char smsg[MESSAGE_SIZE];
 					cm2str(cm, smsg);
 					sendMessage(this, cNode, smsg, MESSAGE_SIZE);
 					free(cm);
 
-					cNode->setCommitIndex(status->getCommitIndex());
+					cNode->setCommitIndex(status->getLastApplied());
 				}
 			}
 		}
 
 		// All states
 		if (this->isTimeout()) {
-			cout << "timeout in term " << this->getStatus()->getCurrentTerm() << endl;
+			cout << "timeout in term " << status->getCurrentTerm() << endl;
 			this->resetStartTime();
-			if (this->getStatus()->isFollower() || this->getStatus()->isCandidate()) {
+			if (status->isFollower() || status->isCandidate()) {
 				cout << "candidacy" << endl;
 				candidacy();
 			}
+		}
+
+		// apply to statemachine
+		while (status->getLastApplied() < status->getCommitIndex()) {
+			int applyIndex = status->getLastApplied() + 1;
+			this->apply(applyIndex);
+			status->setLastApplied(applyIndex);
 		}
 	}
 }
@@ -206,6 +206,9 @@ Config* Raft::getConfig() {
 }
 Status* Raft::getStatus() {
 	return this->status;
+}
+KVS* Raft::getKVS() {
+	return this->kvs;
 }
 
 void Raft::setRaftNodesByConfig() {
@@ -265,9 +268,16 @@ void Raft::cli() {
 		if (this->getStatus()->isLeader()) {
 			vector<string> vec = split(s, COMMAND_DELIMITER);
 
-			vec[0].copy(cKind, COMMAND_KIND_LENGTH);
-			vec[1].copy(key  , KEY_LENGTH);
-			if (vec.size() > 2) { value = stoi(vec[2]); }
+			if (vec.size() > 2) {
+				value = stoi(vec[2]);
+			} else {
+				continue;
+			}
+
+			memset(cKind, 0, sizeof(cKind));
+			memset(key  , 0, sizeof(key  ));
+			vec[0].copy(cKind, vec[0].size());
+			vec[1].copy(key  , vec[1].size());
 
 			// add to log
 			char command[COMMAND_STR_LENGTH];
@@ -323,6 +333,32 @@ int Raft::getLeaderTerm() {
 }
 void Raft::setLeaderTerm(int leaderTerm) {
 	this->leaderTerm = leaderTerm;
+}
+
+void Raft::apply(int index) {
+	entry* e = this->getStatus()->getLog()->get(index);
+	KVS* kvs = this->getKVS();
+
+	vector<string> vec = split(e->command, COMMAND_DELIMITER);
+	vec.push_back("");
+
+	char key[KEY_LENGTH] = {'\0'}, val[VALUE_LENGTH] = {'\0'};
+	vec[1].copy(key, vec[1].size());
+	vec[2].copy(val, vec[2].size());
+
+	if        (vec[0].compare("get") == 0) {
+		kvs->get(key, val);
+
+	} else if (vec[0].compare("put") == 0) {
+		kvs->put(key, val);
+	} else if (vec[0].compare("del") == 0) {
+		kvs->del(key);
+
+	} else {
+		cerr << "unavailable command\n";
+	}
+
+	//kvs->printAll();
 }
 
 /* === private functions === */

@@ -63,7 +63,7 @@ void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	_mtx.unlock();
 
 	// print
-	cout << str << endl;
+	//cout << "log[" << this->lastLogIndex() << "] = \"" << str << "\"" << endl;
 	//printAll();
 }
 
@@ -74,5 +74,5 @@ void Log::printAll() {
 		entry2str(e, str);
 		cout << str << endl;
 	}
-	cout << "------\n";
+	cout << "---log end---\n";
 }

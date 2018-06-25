@@ -118,6 +118,7 @@ int main() {
 	kvs->del("a");
 	kvs->put("b", "1");
 	kvs->put("b", "2");
+	kvs->put("c", "3");
 
 	cout << "kvs->size() = " << kvs->size() << endl;
 	kvs->printAll();

@@ -6,16 +6,16 @@ int KVS::size() {
 	return this->mp.size();
 }
 
-void KVS::get(char key[KEY_LENGTH], char value[VALUE_LENGTH]) {
-	memcpy(value, this->mp[key], VALUE_LENGTH);
+void KVS::get(const char key[KEY_LENGTH], char value[VALUE_LENGTH]) {
+	memcpy(value, this->mp[key].c_str(), VALUE_LENGTH);
 }
 
-void KVS::put(char key[KEY_LENGTH], char value[VALUE_LENGTH]) {
-	this->mp[key] = value;
+void KVS::put(const char key[KEY_LENGTH], const char value[VALUE_LENGTH]) {
+	this->mp[string(key)] = string(value);
 }
 
-void KVS::del(char key[KEY_LENGTH]) {
-	this->mp.erase(key);
+void KVS::del(const char key[KEY_LENGTH]) {
+	this->mp.erase(string(key));
 }
 
 void KVS::printAll() {
@@ -23,5 +23,5 @@ void KVS::printAll() {
 	for (auto x : this->mp) {
 		cout << x.first << " => " << x.second << endl;
 	}
-	cout << "------\n";
+	cout << "---kvs end---\n";
 }
