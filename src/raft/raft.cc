@@ -156,7 +156,7 @@ void Raft::timer() {
 					cNode->getLastIndex() > cNode->getCommitIndex()
 				) {
 					commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
-					cmByFields(cm, cNode->getCommitIndex());
+					cmByFields(cm, cNode->getLastIndex());
 					char smsg[MESSAGE_SIZE];
 					cm2str(cm, smsg);
 					sendMessage(this, cNode, smsg, MESSAGE_SIZE);
@@ -550,7 +550,7 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 
 	int nIndex = rNode->getNextIndex();
 	if (rae->success) {
-		if (nIndex < status->getLog()->size()) {
+		if (nIndex <= rNode->getSentIndex()) {
 			status->incrementSavedCount(nIndex);
 
 			if (status->getSavedCount(nIndex) > raft->getConfig()->getNumberOfNodes() / 2 &&
