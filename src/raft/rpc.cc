@@ -2,6 +2,7 @@
 #define RPC_CC
 
 #include <stdio.h>
+#include <string.h> // for memcpy
 
 #include "constant.h"
 

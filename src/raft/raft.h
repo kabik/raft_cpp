@@ -12,6 +12,7 @@ using std::mutex;
 
 class Config;
 class Status;
+class KVS;
 class Raft;
 class RaftNode;
 class ClientNode;
@@ -29,6 +30,7 @@ private:
 
 	Config* config;
 	Status* status;
+	KVS* kvs;
 	vector<RaftNode*>* raftNodes;
 	vector<ClientNode*>* clientNodes;
 	int me;
@@ -57,6 +59,7 @@ public:
 
 	Config* getConfig();
 	Status* getStatus();
+	KVS* getKVS();
 
 	vector<RaftNode*>* getRaftNodes();
 	RaftNode* getRaftNodeById(int id);
@@ -73,6 +76,8 @@ public:
 
 	int getVote();
 	void setVote(int vote);
+
+	void apply(int index);
 };
 
 #include "raft.cc"

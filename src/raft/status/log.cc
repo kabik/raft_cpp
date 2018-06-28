@@ -12,7 +12,10 @@ Log::Log(string storageDirectoryName) : FileHandler(storageDirectoryName + "log"
 	auto in = this->getIFStream();
 	char buf[ENTRY_STR_LENGTH];
 	while(in && in->getline(buf, ENTRY_STR_LENGTH)) {
-		entry* e = (entry*)malloc(sizeof(entry));
+		entry* e = NULL;
+		while (e == NULL) {
+			e = (entry*)malloc(sizeof(entry));
+		}
 		str2entry(e, buf);
 		this->_log.push_back(e);
 	}
@@ -48,7 +51,10 @@ entry* Log::get(int index) {
 
 void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	// set string
-	entry* e = (entry*)malloc(sizeof(entry));
+	entry* e = NULL;
+	while (e == NULL) {
+		e = (entry*)malloc(sizeof(entry));
+	}
 	fields2entry(e, term, command);
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
@@ -63,7 +69,7 @@ void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	_mtx.unlock();
 
 	// print
-	cout << str << endl;
+	//cout << "log[" << this->lastLogIndex() << "] = \"" << str << "\"" << endl;
 	//printAll();
 }
 
@@ -74,5 +80,5 @@ void Log::printAll() {
 		entry2str(e, str);
 		cout << str << endl;
 	}
-	cout << "------\n";
+	cout << "---log end---\n";
 }
