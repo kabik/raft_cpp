@@ -28,11 +28,11 @@ int main(int argc, char* argv[]) {
 		auto timerThread = thread([&raft]{ raft->timer(); });
 
 		// direct input
-		auto inputThread = thread([&raft]{ raft->cli(); });
+		//auto inputThread = thread([&raft]{ raft->cli(); });
 
 		receiveThread.join();
 		timerThread.join();
-		inputThread.join();
+		//inputThread.join();
 	}
 
 	return 0;

@@ -63,11 +63,15 @@ int Status::getSavedCount(int index) {
 	return this->savedCounts[index];
 }
 void Status::incrementSavedCount(int index) {
+	_mtx.lock();
+
 	while (this->savedCounts.size() <= index) {
 		// myself
 		this->savedCounts.push_back(1);
 	}
 	this->savedCounts[index]++;
+
+	_mtx.unlock();
 }
 
 State Status::getState() {
