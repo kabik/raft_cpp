@@ -27,6 +27,8 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
+	const int OUTPUT_EACH = 100;
+
 	// not stop when this process gets SIGPIPE
 	signal(SIGPIPE, SIG_IGN);
 
@@ -150,7 +152,9 @@ int main(int argc, char* argv[]) {
 		}
 
 		str2cm(rmsg, cm);
-		cout << "commit " << cm->commitIndex << endl;
+		if (cm->commitIndex % OUTPUT_EACH == 0) {
+			cout << "commit " << cm->commitIndex << endl;
+		}
 	}
 	free(cc);
 	free(cm);

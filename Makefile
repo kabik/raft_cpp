@@ -2,7 +2,7 @@ CC := g++
 CFLAGS := -std=c++11 -pthread -g -Wall -Wextra -fdiagnostics-color=always
 BIN_DIR := bin
 L := main
-RM := rm -ri
+RM := rm -rf
 
 all: $(L)
 
