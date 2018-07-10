@@ -5,9 +5,11 @@
 #include <string.h>
 #include <vector>
 #include <signal.h>
+#include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 #include "../raft/constant.h"
@@ -20,6 +22,82 @@ using std::endl;
 using std::ifstream;
 using std::vector;
 using std::stoi;
+
+int conn(char* hostname, int port) {
+	char port_str[PORT_LENGTH];
+	sprintf(port_str, "%d", port);
+
+	int fd;
+	struct S_ADDRINFO hints;
+	struct S_ADDRINFO *ai;
+
+	memset(&hints, 0, sizeof(hints));
+#ifdef ENABLE_RSOCKET
+	hints.ai_flags = RAI_FAMILY;
+	hints.ai_port_space = RDMA_PS_TCP;
+#else
+	hints.ai_flags = 0;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_family = AF_INET;
+#endif // RNETLIB_ENABLE_VERBS
+
+	int err = S_GETADDRINFO(hostname, port_str, &hints, &ai);
+	if (err) {
+		std::cerr << gai_strerror(err) << std::endl;
+		exit(1);
+	}
+
+	if ((fd = S_SOCKET(ai->ai_family, SOCK_STREAM, 0)) == -1) {
+		perror("socket");
+		exit(1);
+	}
+
+	// set TCP_NODELAY
+	int val = 1;
+	if (S_SETSOCKOPT(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == -1) {
+		perror("setsockopt (TCP_NODELAY)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+
+	// set internal buffer size
+	val = (1 << 21);
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_SNDBUF, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_SNDBUF)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_RCVBUF)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+
+#ifdef ENABLE_RSOCKET
+	val = 0; // optimization for better bandwidth
+	if (S_SETSOCKOPT(fd, SOL_RDMA, RDMA_INLINE, &val, sizeof(val)) == -1) {
+		perror("setsockopt (RDMA_INLINE)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+#endif // ENABLE_RSOCKET
+
+	// connect to the server
+	if (S_CONNECT(fd, S_DST_ADDR(ai), S_DST_ADDRLEN(ai)) == -1) {
+		perror("connect");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+
+	S_FREEADDRINFO(ai);
+
+	return fd;
+}
 
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
@@ -74,32 +152,21 @@ int main(int argc, char* argv[]) {
 	// connect to a raft server
 	cout << "connect to " << hostname << ":" << port << endl;
 
-	struct sockaddr_in server;
-
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
-
-	server.sin_family = AF_INET;
-	server.sin_port = htons(port);
-	server.sin_addr.s_addr = inet_addr(hostname);
-
-	if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
-		perror("connect");
-		exit(1);
-	}
+	int fd = conn(hostname, port);
 
 	// request leader location
 	request_location* rl = (request_location*)malloc(sizeof(request_location));
 	char smsg[MESSAGE_SIZE];
 	rlByFields(rl);
 	rl2str(rl, smsg);
-	if (write(sock, smsg, MESSAGE_SIZE) < 0) {
+	if (S_SEND(fd, smsg, MESSAGE_SIZE, 0) < 0) {
 		perror("write");
 	}
 	free(rl);
 
 	// receive leader location
 	char rmsg[MESSAGE_SIZE];
-	if (recv(sock, rmsg, MESSAGE_SIZE, MSG_WAITALL) < 0) {
+	if (S_RECV(fd, rmsg, MESSAGE_SIZE, 0) < 0) {
 		perror("recv");
 	}
 	cout << rmsg << endl;
@@ -111,21 +178,10 @@ int main(int argc, char* argv[]) {
 		<< rrl->hostname << endl
 		<< rrl->port << endl;
 	if (strcmp(hostname, rrl->hostname) != 0) {
-		close(sock);
-		cout << "connect to leader " << hostname << ":" << port << endl;
+		close(fd);
+		cout << "connect to leader " << rrl->hostname << ":" << rrl->port << endl;
 
-		//struct sockaddr_in server;
-
-		sock = socket(AF_INET, SOCK_STREAM, 0);
-
-		server.sin_family = AF_INET;
-		server.sin_port = htons(rrl->port);
-		server.sin_addr.s_addr = inet_addr(rrl->hostname);
-
-		if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
-			perror("connect");
-			exit(1);
-		}
+		fd = conn(rrl->hostname, rrl->port);
 	} else {
 		cout << "I have connected to leader.\n";
 	}
@@ -142,11 +198,11 @@ int main(int argc, char* argv[]) {
 		strcpy(cc->command, commandList[i].c_str());
 		cc2str(cc, smsg);
 
-		if (write(sock, smsg, MESSAGE_SIZE) < 0) {
+		if (S_SEND(fd, smsg, MESSAGE_SIZE, 0) < 0) {
 			perror("write");
 			exit(1);
 		}
-		if (recv(sock, rmsg, sizeof(rmsg), MSG_WAITALL) < 0) {
+		if (S_RECV(fd, rmsg, sizeof(rmsg), MSG_WAITALL) < 0) {
 			perror("recv");
 			exit(1);
 		}
@@ -159,6 +215,10 @@ int main(int argc, char* argv[]) {
 	free(cc);
 	free(cm);
 
+	// close connection
+	S_CLOSE(fd);
+
+	// close ifs
 	ifs.close();
 	ifs2.close();
 

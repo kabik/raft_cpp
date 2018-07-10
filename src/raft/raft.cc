@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <chrono>
@@ -12,7 +14,7 @@
 #include "../config.h"
 #include "../kvs.h"
 #include "status/status.h"
-#include "status/entry.cc";
+#include "status/entry.cc"
 #include "node/raftnode.h"
 #include "node/clientnode.h"
 #include "state.h"
@@ -56,69 +58,122 @@ Raft::Raft(char* configFileName) {
 
 // to use receive thread
 void Raft::receive() {
-	// === bind ===
-	int listenSocket;
-	struct sockaddr_in addr, client;
-	const int yes = 1;
+	int fd;
+	struct S_ADDRINFO hints;
+	struct S_ADDRINFO *ai;
 
-	if ((listenSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	memset(&hints, 0, sizeof(hints));
+#ifdef ENABLE_RSOCKET
+	hints.ai_flags = RAI_PASSIVE | RAI_FAMILY;
+	hints.ai_port_space = RDMA_PS_TCP;
+#else
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_family = AF_INET;
+#endif
+
+	char port[PORT_LENGTH] = {0};
+	sprintf(port, "%d", this->getRaftNodeById(this->getMe())->getListenPort());
+	int err = S_GETADDRINFO(nullptr, port, &hints, &ai);
+	if(err) {
+		cerr << gai_strerror(err) << endl;
+		exit(1);
+	}
+
+	if ((fd = S_SOCKET(ai->ai_family, SOCK_STREAM, 0)) == -1) {
 		perror("socket");
 		exit(1);
 	}
 
-	int listenPort = this->getRaftNodeById(this->getMe())->getListenPort();
+	// set TCP_NODELAY
+	int val = 1;
+	if (S_SETSOCKOPT(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == -1) {
+		perror("setsockopt (TPC_NODELAY)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
 
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(listenPort);
-	addr.sin_addr.s_addr = INADDR_ANY;
+	// set internal buffer size
+	val = (1 << 21);
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_SNDBUF, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_SNDBUF)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_RCVBUF)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
 
-	setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
+#ifdef ENABLE_RSOCKET
+	val = 0; // optimization for better bandwidth
+	if (S_SETSOCKOPT(fd, SOL_RDMA, RDMA_INLINE, &val, sizeof(val)) == -1) {
+		perror("setsockopt (RDMA_INLINE)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+#endif // ENABLE_RSOCKET
 
-	if (bind(listenSocket, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+	val = 1;
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_REUSEADDR)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+
+	if (S_BIND(fd, S_SRC_ADDR(ai), S_SRC_ADDRLEN(ai)) == -1) {
 		perror("bind");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
 		exit(1);
 	}
 
-
-	// === listen ===
-	if (listen(listenSocket, 30) < 0) {
+	if (S_LISTEN(fd, 1024) == -1) {
 		perror("listen");
-		close(listenSocket);
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
 		exit(1);
-	} else {
-		cout << "Listening in Port " << listenPort << "." << endl;
 	}
 
-
-	// === accept ===
-	while(1) {
-		int len = sizeof(client);
-		int sock;
-		if ((sock = accept(listenSocket, (struct sockaddr*)&client, (unsigned int*)&len)) < 0) {
+	// accept
+	struct sockaddr_in c_addr;
+	socklen_t len = sizeof(c_addr);
+	while (1) {
+		int client_fd = S_ACCEPT(fd, (sockaddr*)&c_addr, &len);
+		if (client_fd == -1) {
 			perror("accept");
+			S_CLOSE(fd);
+			S_FREEADDRINFO(ai);
 			exit(1);
 		}
+
 		bool isClient = true;
 		for (RaftNode* rNode : *this->getRaftNodes()) {
-			if (!rNode->isMe() && inet_ntoa(client.sin_addr) == rNode->getHostname() && rNode->getReceiveSock() < 0) {
-				rNode->setReceiveSock(sock);
+			if (!rNode->isMe() && inet_ntoa(c_addr.sin_addr) == rNode->getHostname() && rNode->getReceiveSock() < 0) {
+				rNode->setReceiveSock(client_fd);
 				startWorkerThread(this, rNode, NULL, false);
 				isClient = false;
 
-				cout << rNode->getHostname() << " connected(Raft Node). (sock=" << sock << ")\n";
+				cout << rNode->getHostname() << " connected(Raft Node). (sock=" << client_fd << ")\n";
 			}
 		}
 		// if client
 		if (isClient) {
-			string hostname(inet_ntoa(client.sin_addr));
-			ClientNode *cNode = new ClientNode(&hostname, (int)ntohs(client.sin_port));
-			cNode->setReceiveSock(sock);
-			cNode->setSendSock(sock);
+			string hostname(inet_ntoa(c_addr.sin_addr));
+			ClientNode *cNode = new ClientNode(&hostname, (int)ntohs(c_addr.sin_port));
+			cNode->setReceiveSock(client_fd);
+			cNode->setSendSock(client_fd);
 			startWorkerThread(this, NULL, cNode, true);
 
 			this->addClientNode(cNode);
 
-			cout << cNode->getHostname() << " connected(Client Node). (sock=" << sock << ")\n";
+			cout << cNode->getHostname() << " connected(Client Node). (sock=" << client_fd << ")\n";
 		}
 	}
 }
@@ -467,7 +522,7 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 		//}
 
 		// push entries to log
-		if (arpc->entries[0] > '\0') {
+		if ('0' < arpc->entries[0] && arpc->entries[0] < '9') {
 			char entryStr[ENTRY_STR_LENGTH];
 			memcpy(entryStr, arpc->entries, ENTRY_STR_LENGTH);
 
@@ -621,10 +676,10 @@ static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
 
 static void sendMessage(Raft* raft, RaftNode* rNode, char* msg, int length) {
 	connect2raftnode(raft, rNode);
-	rNode->send(msg, length);
+	rNode->_send(msg, length);
 }
 static void sendMessage(Raft* raft, ClientNode* cNode, char* msg, int length) {
-	cNode->send(msg, length);
+	cNode->_send(msg, length);
 }
 
 static void connect2raftnode(Raft* raft, RaftNode* rNode) {
@@ -633,20 +688,81 @@ static void connect2raftnode(Raft* raft, RaftNode* rNode) {
 		return;
 	}
 
-	// connect
-	struct sockaddr_in server;
+	int fd;
+	struct S_ADDRINFO hints;
+	struct S_ADDRINFO *ai;
 
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	memset(&hints, 0, sizeof(hints));
+#ifdef ENABLE_RSOCKET
+	hints.ai_flags = RAI_FAMILY;
+	hints.ai_port_space = RDMA_PS_TCP;
+#else
+	hints.ai_flags = 0;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_family = AF_INET;
+#endif // RNETLIB_ENABLE_VERBS
 
-	server.sin_family = AF_INET;
-	server.sin_port = htons(rNode->getListenPort());
-	server.sin_addr.s_addr = inet_addr(rNode->getHostname().c_str());
+	char hostname[HOSTNAME_LENGTH];
+	strcpy(hostname, rNode->getHostname().c_str());
+	char port[PORT_LENGTH];
+	sprintf(port, "%d", rNode->getListenPort());
 
-	if ((connect(sock, (struct sockaddr *)&server, sizeof(server))) < 0) {
-		perror("connect");
-	} else {
-		rNode->setSendSock(sock);
+	int err = S_GETADDRINFO(hostname, port, &hints, &ai);
+	if (err) {
+		cerr << gai_strerror(err) << endl;
+		exit(1);
 	}
+
+	if ((fd = S_SOCKET(ai->ai_family, SOCK_STREAM, 0)) == -1) {
+		perror("socket");
+		exit(1);
+	}
+
+	// set TCP_NODELAY
+	int val = 1;
+	if (S_SETSOCKOPT(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == -1) {
+		perror("setsockopt (TCP_NODELAY)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+
+	// set internal buffer size
+	val = (1 << 21);
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_SNDBUF, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_SNDBUF)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+	if (S_SETSOCKOPT(fd, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)) == -1) {
+		perror("setsockopt (SO_RCVBUF)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+
+#ifdef ENABLE_RSOCKET
+	val = 0; // optimization for better bandwidth
+	if (S_SETSOCKOPT(fd, SOL_RDMA, RDMA_INLINE, &val, sizeof(val)) == -1) {
+		perror("setsockopt (RDMA_INLINE)");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	}
+#endif // ENABLE_RSOCKET
+
+	// connect to the server
+	if (S_CONNECT(fd, S_DST_ADDR(ai), S_DST_ADDRLEN(ai)) == -1) {
+		perror("connect");
+		S_CLOSE(fd);
+		S_FREEADDRINFO(ai);
+		exit(1);
+	} else {
+		rNode->setSendSock(fd);
+	}
+
+	S_FREEADDRINFO(ai);
 }
 
 static void startWorkerThread(Raft* raft, RaftNode* rNode, ClientNode* cNode, bool isClient) {
@@ -678,7 +794,7 @@ static void* work(void* args) {
 
 	while(1) {
 		memset(buf, 0, sizeof(buf));
-		if (recv(sock, buf, sizeof(buf), MSG_WAITALL) < 0) {
+		if (S_RECV(sock, buf, sizeof(buf), MSG_WAITALL) < 0) {
 			perror("recv");
 			(isClient) ? cNode->setReceiveSock(-1) : rNode->setReceiveSock(-1);
 			break;
