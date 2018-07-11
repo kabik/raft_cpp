@@ -1,4 +1,5 @@
 #include "node.h"
+#include "../../functions.cc"
 
 Node::Node(string* hostname, int listenPort) {
 	this->setHostname(*hostname);
@@ -7,9 +8,9 @@ Node::Node(string* hostname, int listenPort) {
 	this->sendSock = -1;
 }
 
-void Node::send(char* message, int length) {
+void Node::_send(char* message, int length) {
 	//cout << "send message to " << this->getHostname() << " [" << message << "] sock=" << sendSock << endl;
-	if (write(this->getSendSock(), message, length) < 0) {
+	if (S_SEND(this->getSendSock(), message, length, 0) < 0) {
 		perror("write");
 		this->sendSock = -1;
 		cout << "    node is " << this->getHostname() << endl;

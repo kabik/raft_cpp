@@ -3,6 +3,7 @@
 
 // hostname
 #define HOSTNAME_LENGTH                100
+#define PORT_LENGTH                    6
 
 // communication related
 #define MESSAGE_SIZE                   2048

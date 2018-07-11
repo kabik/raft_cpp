@@ -13,6 +13,59 @@
 #include <sys/stat.h>
 #include <random>
 
+/* === rsocket === */
+#ifdef ENABLE_RSOCKET
+#include <rdma/rsocket.h>
+
+// rsocket functions
+#define S_SOCKET(f, t, p)            rsocket(f, t, p)
+#define S_CLOSE(f)                   rclose(f)
+#define S_SEND(s, b, l, f)           rsend(s, b, l, f)
+#define S_RECV(s, b, l, f)           rrecv(s, b, l, f)
+#define S_ADDRINFO                   rdma_addrinfo
+#define S_GETADDRINFO(a, p, h, r)    rdma_getaddrinfo(a, p, h, r)
+#define S_FREEADDRINFO(r)            rdma_freeaddrinfo(r)
+#define S_SETSOCKOPT(s, l, n, v, ol) rsetsockopt(s, l, n, v, ol)
+
+// server-specific
+#define S_ACCEPT(s, a, l)       raccept(s, a, l)
+#define S_BIND(s, a, l)         rbind(s, a, l)
+#define S_GETSOCKNAME(s, n, l)  rgetsockname(s, n, l)
+#define S_LISTEN(s, b)          rlisten(s, b)
+#define S_SRC_ADDR(a)           a->ai_src_addr
+#define S_SRC_ADDRLEN(a)        a->ai_src_len
+// client-specific
+#define S_CONNECT(s, a, l)           rconnect(s, a, l)
+#define S_DST_ADDR(a)                a->ai_dst_addr
+#define S_DST_ADDRLEN(a)             a->ai_dst_len
+
+#else
+
+// BSD-socket functions
+#define S_SOCKET(f, t, p)            ::socket(f, t, p)
+#define S_CLOSE(f)                   close(f)
+#define S_SEND(s, b, l, f)           send(s, b, l, f)
+#define S_RECV(s, b, l, f)           recv(s, b, l, f)
+#define S_ADDRINFO                   addrinfo
+#define S_GETADDRINFO(a, p, h, r)    getaddrinfo(a, p, h, r)
+#define S_FREEADDRINFO(r)            freeaddrinfo(r)
+#define S_SETSOCKOPT(s, l, n, v, ol) setsockopt(s, l, n, v, ol)
+
+// server-specific
+#define S_ACCEPT(s, a, l)       accept(s, a, l)
+#define S_BIND(s, a, l)         bind(s, a, l)
+#define S_GETSOCKNAME(s, n, l)  getsockname(s, n, l)
+#define S_LISTEN(s, b)          listen(s, b)
+#define S_SRC_ADDR(a)           a->ai_addr
+#define S_SRC_ADDRLEN(a)        a->ai_addrlen
+// client-specific
+#define S_CONNECT(s, a, l)           connect(s, a, l)
+#define S_DST_ADDR(a)                a->ai_addr
+#define S_DST_ADDRLEN(a)             a->ai_addrlen
+
+#endif // ENABLE_RSOCKET
+/* === rsocket === */
+
 #define STR(var) #var
 
 using std::cout;
