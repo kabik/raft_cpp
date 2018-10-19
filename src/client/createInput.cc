@@ -10,6 +10,7 @@
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::flush;
 using std::ofstream;
 using std::stoi;
 
@@ -28,8 +29,7 @@ int main(int argc, char* argv[]) {
 	// create the directory
 	struct stat st;
 	if (stat(filename, &st) != 0) {
-		cout << "Creating the Directory \"" << filename << "\"." << endl;
-		cout << "***";
+		cout << "Creating the Directory \"" << filename << "\" ..." << flush;
 		int rc = mymkdir(filename);
 		if (rc == 0) {
 			cout << "Success!" << endl;
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// create input file
-	cout << "creating...";
+	cout << "creating..." << flush;
 	std::random_device rnd;
 	for (int i = 0; i < num; i++) {
 		char key[KEY_LENGTH];

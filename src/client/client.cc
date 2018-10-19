@@ -198,6 +198,7 @@ int main(int argc, char* argv[]) {
 	std::chrono::system_clock::time_point start, end;
 	start = std::chrono::system_clock::now();
 
+	int cnt = 0;
 	for (int i = 0; i < commandList.size(); i++) {
 		strcpy(smsg, "");
 		strcpy(cc->command, commandList[i].c_str());
@@ -213,7 +214,8 @@ int main(int argc, char* argv[]) {
 		}
 
 		str2cm(rmsg, cm);
-		if (cm->commitIndex % OUTPUT_EACH == 0) {
+		cnt = (cnt + 1) % OUTPUT_EACH;
+		if (cnt == 0) {
 			cout << "commit " << cm->commitIndex << endl;
 		}
 	}
