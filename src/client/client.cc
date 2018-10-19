@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <chrono>
 
 #include "../raft/constant.h"
 #include "../functions.cc"
@@ -105,7 +106,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	const int OUTPUT_EACH = 100;
+	const int OUTPUT_EACH = 1000;
 
 	// not stop when this process gets SIGPIPE
 	signal(SIGPIPE, SIG_IGN);
@@ -193,6 +194,11 @@ int main(int argc, char* argv[]) {
 
 	commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
 
+	// start measurement
+	std::chrono::system_clock::time_point start, end;
+	start = std::chrono::system_clock::now();
+
+	int cnt = 0;
 	for (int i = 0; i < commandList.size(); i++) {
 		strcpy(smsg, "");
 		strcpy(cc->command, commandList[i].c_str());
@@ -208,10 +214,16 @@ int main(int argc, char* argv[]) {
 		}
 
 		str2cm(rmsg, cm);
-		if (cm->commitIndex % OUTPUT_EACH == 0) {
+		cnt = (cnt + 1) % OUTPUT_EACH;
+		if (cnt == 0) {
 			cout << "commit " << cm->commitIndex << endl;
 		}
 	}
+	end = std::chrono::system_clock::now();
+	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+	cout << "time: " << elapsed / 1000 << " seconds" << endl;
+	// finish measurement
+
 	free(cc);
 	free(cm);
 

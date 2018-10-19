@@ -144,6 +144,7 @@ void Raft::receive() {
 	// accept
 	struct sockaddr_in c_addr;
 	socklen_t len = sizeof(c_addr);
+	char buf[MESSAGE_SIZE];
 	while (1) {
 		int client_fd = S_ACCEPT(fd, (sockaddr*)&c_addr, &len);
 		if (client_fd == -1) {
@@ -153,18 +154,23 @@ void Raft::receive() {
 			exit(1);
 		}
 
-		bool isClient = true;
-		for (RaftNode* rNode : *this->getRaftNodes()) {
-			if (!rNode->isMe() && inet_ntoa(c_addr.sin_addr) == rNode->getHostname() && rNode->getReceiveSock() < 0) {
-				rNode->setReceiveSock(client_fd);
-				startWorkerThread(this, rNode, NULL, false);
-				isClient = false;
-
-				cout << rNode->getHostname() << " connected(Raft Node). (sock=" << client_fd << ")\n";
-			}
+		memset(buf, 0, sizeof(buf));
+		if (S_RECV(client_fd, buf, sizeof(buf), MSG_WAITALL | MSG_PEEK) < 0) {
+			perror("recv");
 		}
-		// if client
-		if (isClient) {
+		RPCKind rpcKind = discernRPC(buf);
+		bool isClient = (rpcKind == RPC_KIND_REQUEST_LOCATION || rpcKind == RPC_KIND_CLIENT_COMMAND);
+
+		if (!isClient) {
+			for (RaftNode* rNode : *this->getRaftNodes()) {
+				if (!rNode->isMe() && inet_ntoa(c_addr.sin_addr) == rNode->getHostname() && rNode->getReceiveSock() < 0) {
+					rNode->setReceiveSock(client_fd);
+					startWorkerThread(this, rNode, NULL, false);
+
+					cout << rNode->getHostname() << " connected(Raft Node). (sock=" << client_fd << ")\n";
+				}
+			}
+		} else {
 			string hostname(inet_ntoa(c_addr.sin_addr));
 			ClientNode *cNode = new ClientNode(&hostname, (int)ntohs(c_addr.sin_port));
 			cNode->setReceiveSock(client_fd);
@@ -217,7 +223,7 @@ void Raft::timer() {
 					sendMessage(this, cNode, smsg, MESSAGE_SIZE);
 					free(cm);
 
-					cNode->setCommitIndex(status->getLastApplied());
+					cNode->setCommitIndex(cNode->getLastIndex());
 				}
 			}
 		}
@@ -522,7 +528,7 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 		//}
 
 		// push entries to log
-		if ('0' < arpc->entries[0] && arpc->entries[0] < '9') {
+		if ('0' <= arpc->entries[0] && arpc->entries[0] <= '9') {
 			char entryStr[ENTRY_STR_LENGTH];
 			memcpy(entryStr, arpc->entries, ENTRY_STR_LENGTH);
 
@@ -531,8 +537,11 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 
 			// add to log
 			int term = stoi(vec[0]);
+			char command[COMMAND_STR_LENGTH];
+			memcpy(command, vec[1].c_str(), vec[1].size());
+			command[vec[1].size()] = '\0';
 			if (term >= 0) {
-				log->add(term, vec[1].c_str());
+				log->add(term, command);
 			}
 		}
 
@@ -788,6 +797,8 @@ static void* work(void* args) {
 	RaftNode*   rNode    = wargs->rNode;
 	ClientNode* cNode    = wargs->cNode;
 	bool        isClient = wargs->isClient;
+
+	cout << "raft:" << raft << " rNode:" << rNode << " cNode:" << cNode << " isClient:" << isClient << endl;
 
 	char buf[MESSAGE_SIZE];
 	int sock = (isClient) ? cNode->getReceiveSock() : rNode->getReceiveSock();
