@@ -46,7 +46,11 @@ bool Log::match(int index, int term) {
 }
 
 entry* Log::get(int index) {
-	return this->_log[index];
+	_mtx.lock();
+	entry *e = this->_log[index];
+	_mtx.unlock();
+
+	return e;
 }
 
 void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {

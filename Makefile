@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -std=c++11 -pthread -g -Wall -Wextra -fdiagnostics-color=always
+CFLAGS := -std=c++11 -pthread -g -fdiagnostics-color=always
 BIN_DIR := bin
 L := main main_rsocket client client_rsocket
 RM := rm -rf
