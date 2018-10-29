@@ -39,6 +39,8 @@ static void sendMessage(Raft* raft, ClientNode* cNode, char* msg, int length);
 static void connect2raftnode(Raft* raft, RaftNode* rNode);
 static void startWorkerThread(Raft* raft, RaftNode* rNode, ClientNode* cNode, bool isClient);
 
+high_resolution_clock::time_point first_log_time;
+
 Raft::Raft(char* configFileName) {
 	this->config = new Config(configFileName);
 	this->raftNodes = new vector<RaftNode*>;
@@ -224,6 +226,11 @@ void Raft::timer() {
 					free(cm);
 
 					cNode->setCommitIndex(cNode->getLastIndex());
+
+					if (status->getLastApplied() == MEASURE_LOG_SIZE-1) {
+						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count() / 1000;
+						cout << "input time = " << elapsed << " sec.\n";
+					}
 				}
 			}
 		}
@@ -674,6 +681,9 @@ static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
 
 	Status* status = raft->getStatus();
 	if (status->isLeader()) {
+		if (status->getLog()->size() == 0) {
+			first_log_time = high_resolution_clock::now();
+		}
 		status->getLog()->add(status->getCurrentTerm(), cc->command);
 		cNode->setLastIndex(status->getLog()->lastLogIndex());
 	} else {

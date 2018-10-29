@@ -28,4 +28,8 @@ const static char COMMAND_DELIMITER = ',';
 // append entries rpc related
 #define HEARTBEAT_INTERVAL             50000   // 0.05 sec
 
+
+// measure
+#define MEASURE_LOG_SIZE               4000000
+
 #endif //CONSTANT_H
