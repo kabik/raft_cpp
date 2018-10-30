@@ -215,7 +215,8 @@ void Raft::timer() {
 
 			// send commit message
 			for (ClientNode* cNode : *this->getClientNodes()) {
-				if (status->getLastApplied() > cNode->getCommitIndex() &&
+				if (cNode != NULL                                      &&
+					status->getLastApplied() > cNode->getCommitIndex() &&
 					cNode->getLastIndex() > cNode->getCommitIndex()
 				) {
 					commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
@@ -808,7 +809,7 @@ static void* work(void* args) {
 	ClientNode* cNode    = wargs->cNode;
 	bool        isClient = wargs->isClient;
 
-	cout << "raft:" << raft << " rNode:" << rNode << " cNode:" << cNode << " isClient:" << isClient << endl;
+	//cout << "raft:" << raft << " rNode:" << rNode << " cNode:" << cNode << " isClient:" << isClient << endl;
 
 	char buf[MESSAGE_SIZE];
 	int sock = (isClient) ? cNode->getReceiveSock() : rNode->getReceiveSock();
