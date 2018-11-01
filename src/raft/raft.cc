@@ -223,10 +223,9 @@ void Raft::timer() {
 					cmByFields(cm, cNode->getLastIndex());
 					char smsg[MESSAGE_SIZE];
 					cm2str(cm, smsg);
+					cNode->setCommitIndex(cNode->getLastIndex());
 					sendMessage(this, cNode, smsg, MESSAGE_SIZE);
 					free(cm);
-
-					cNode->setCommitIndex(cNode->getLastIndex());
 
 					if (status->getLastApplied() == MEASURE_LOG_SIZE-1) {
 						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count() / 1000;
