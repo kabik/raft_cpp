@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <signal.h>
 
 #include "raft/raft.h"
 
@@ -17,6 +18,9 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
+	// not stop when this process gets SIGPIPE
+	signal(SIGPIPE, SIG_IGN);
+
 	if (auto raft = std::make_shared<Raft>(argv[1])) {
 		auto receiveThread = thread([&raft]{ raft->receive(); });
 		sleep_for(milliseconds(1000));
@@ -24,11 +28,11 @@ int main(int argc, char* argv[]) {
 		auto timerThread = thread([&raft]{ raft->timer(); });
 
 		// direct input
-		auto inputThread = thread([&raft]{ raft->cli(); });
+		//auto inputThread = thread([&raft]{ raft->cli(); });
 
 		receiveThread.join();
 		timerThread.join();
-		inputThread.join();
+		//inputThread.join();
 	}
 
 	return 0;

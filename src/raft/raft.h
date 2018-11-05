@@ -12,12 +12,16 @@ using std::mutex;
 
 class Config;
 class Status;
+class KVS;
 class Raft;
 class RaftNode;
+class ClientNode;
 
 typedef struct _worker_args {
 	Raft* raft;
 	RaftNode* rNode;
+	ClientNode* cNode;
+	bool isClient;
 } worker_args;
 
 class Raft {
@@ -26,7 +30,9 @@ private:
 
 	Config* config;
 	Status* status;
+	KVS* kvs;
 	vector<RaftNode*>* raftNodes;
+	vector<ClientNode*>* clientNodes;
 	int me;
 	high_resolution_clock::time_point startTime;
 
@@ -53,9 +59,14 @@ public:
 
 	Config* getConfig();
 	Status* getStatus();
+	KVS* getKVS();
 
 	vector<RaftNode*>* getRaftNodes();
 	RaftNode* getRaftNodeById(int id);
+	RaftNode* getLeader();
+
+	vector<ClientNode*>* getClientNodes();
+	void addClientNode(ClientNode* cNode);
 
 	void setMe(int me);
 	int getMe();
@@ -65,6 +76,8 @@ public:
 
 	int getVote();
 	void setVote(int vote);
+
+	void apply(int index);
 };
 
 #include "raft.cc"

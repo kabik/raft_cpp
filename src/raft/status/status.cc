@@ -28,6 +28,8 @@ Status::Status(string storageDirectoryName) {
 	if (this->votedFor->getValue().empty()) {
 		this->votedFor->setValue("-1");
 	}
+	this->currentTerm->closeIFStream();
+	this->votedFor->closeIFStream();
 
 	cout << this->currentTerm->getName() << ": " << this->currentTerm->getValue() << endl;
 	cout << this->votedFor->getName() << ": " << this->votedFor->getValue() << endl;
@@ -56,6 +58,20 @@ string Status::getStorageDirectoryName() {
 
 Log* Status::getLog() {
 	return this->log;
+}
+int Status::getSavedCount(int index) {
+	return this->savedCounts[index];
+}
+void Status::incrementSavedCount(int index) {
+	_mtx.lock();
+
+	while (this->savedCounts.size() <= index) {
+		// myself
+		this->savedCounts.push_back(1);
+	}
+	this->savedCounts[index]++;
+
+	_mtx.unlock();
 }
 
 State Status::getState() {

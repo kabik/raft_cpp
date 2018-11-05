@@ -1,12 +1,27 @@
 #include <iostream>
 
 #include "log.h"
+#include "entry.cc"
 
 using std::cout;
 using std::endl;
 
 Log::Log(string storageDirectoryName) : FileHandler(storageDirectoryName + "log") {
 	cout << "The Log file is \"" << this->getFileName() << "\"." << endl;
+
+	auto in = this->getIFStream();
+	char buf[ENTRY_STR_LENGTH];
+	while(in && in->getline(buf, ENTRY_STR_LENGTH)) {
+		entry* e = NULL;
+		while (e == NULL) {
+			e = (entry*)malloc(sizeof(entry));
+		}
+		str2entry(e, buf);
+		this->_log.push_back(e);
+	}
+	printAll();
+
+	closeIFStream();
 }
 
 int Log::size() {
@@ -27,19 +42,24 @@ int Log::getTerm(int index) {
 
 bool Log::match(int index, int term) {
 	return index < 0                    ||
-	       index > this->lastLogIndex() ||
 	       term == this->getTerm(index);
 }
 
 entry* Log::get(int index) {
-	return this->_log[index];
+	_mtx.lock();
+	entry *e = this->_log[index];
+	_mtx.unlock();
+
+	return e;
 }
 
 void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	// set string
-	entry* e = (entry*)malloc(sizeof(entry));
-	e->term = term;
-	memcpy(e->command, command, COMMAND_STR_LENGTH);
+	entry* e = NULL;
+	while (e == NULL) {
+		e = (entry*)malloc(sizeof(entry));
+	}
+	fields2entry(e, term, command);
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
 
@@ -53,7 +73,8 @@ void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	_mtx.unlock();
 
 	// print
-	printAll();
+	//cout << "log[" << this->lastLogIndex() << "] = \"" << str << "\"" << endl;
+	//printAll();
 }
 
 void Log::printAll() {
@@ -63,5 +84,5 @@ void Log::printAll() {
 		entry2str(e, str);
 		cout << str << endl;
 	}
-	cout << "------\n";
+	cout << "---log end---\n";
 }

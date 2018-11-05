@@ -2,10 +2,12 @@
 #define STATUS_H
 
 #include <mutex>
+#include <vector>
 
 #include "../state.h"
 
 using std::string;
+using std::vector;
 
 class SavedValue;
 class Log;
@@ -16,6 +18,7 @@ private:
 
 	string* storageDirectoryName;
 	Log* log;
+	vector<int> savedCounts;
 	State state;
 	SavedValue* currentTerm;
 	SavedValue* votedFor;
@@ -31,6 +34,8 @@ public:
 	string getStorageDirectoryName();
 
 	Log* getLog();
+	int getSavedCount(int index);
+	void incrementSavedCount(int index);
 
 	State getState();
 	void  setState(State state);

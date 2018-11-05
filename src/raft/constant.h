@@ -1,25 +1,19 @@
 #ifndef CONSTANT_H
 #define CONSTANT_H
 
+// hostname
+#define HOSTNAME_LENGTH                100
+#define PORT_LENGTH                    6
+
 // communication related
-#define BUFFER_SIZE                    2048
+#define MESSAGE_SIZE                   2048
 
 // RPC's message length related
-/*
-#define APPEND_ENTRIES_RPC_LENGTH      1024
-#define REQUEST_VOTE_RPC_LENGTH        2048
-#define RESPONSE_APPEND_ENTRIES_LENGTH 16
-#define RESPONSE_REQUEST_VOTE_LENGTH   16
-*/
-#define APPEND_ENTRIES_RPC_LENGTH      2048
-#define REQUEST_VOTE_RPC_LENGTH        2048
-#define RESPONSE_APPEND_ENTRIES_LENGTH 2048
-#define RESPONSE_REQUEST_VOTE_LENGTH   2048
-
 #define ENTRIES_STR_LENGTH             1024
 #define ENTRY_STR_LENGTH               32
 #define COMMAND_STR_LENGTH             22
 #define COMMAND_KIND_LENGTH            3
+#define COMMIT_MESSAGE_LENGTH          32
 #define KEY_LENGTH                     8
 #define VALUE_LENGTH                   8
 
@@ -28,10 +22,14 @@ const static char ENTRY_DELIMITER   = ':';
 const static char COMMAND_DELIMITER = ',';
 
 // timeout related
-#define MIN_TIMEOUTTIME_MICROSECONDS   250000  // 0.25 sec
-#define MAX_TIMEOUTTIME_MICROSECONDS   500000  // 0.5  sec
+#define MIN_TIMEOUTTIME_MICROSECONDS   1000000  // 1     sec
+#define MAX_TIMEOUTTIME_MICROSECONDS   1500000  // 1.5  sec
 
 // append entries rpc related
 #define HEARTBEAT_INTERVAL             50000   // 0.05 sec
+
+
+// measure
+#define MEASURE_LOG_SIZE               2000000
 
 #endif //CONSTANT_H
