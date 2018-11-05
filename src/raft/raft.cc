@@ -219,12 +219,15 @@ void Raft::timer() {
 					status->getLastApplied() > cNode->getCommitIndex() &&
 					cNode->getLastIndex() > cNode->getCommitIndex()
 				) {
+					int lastIndex = cNode->getLastIndex();
+
 					commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
-					cmByFields(cm, cNode->getLastIndex());
+					cmByFields(cm, lastIndex);
 					char smsg[MESSAGE_SIZE];
 					cm2str(cm, smsg);
-					cNode->setCommitIndex(cNode->getLastIndex());
 					sendMessage(this, cNode, smsg, MESSAGE_SIZE);
+					cNode->setCommitIndex(lastIndex);
+
 					free(cm);
 
 					if (status->getLastApplied() == MEASURE_LOG_SIZE-1) {
