@@ -30,6 +30,6 @@ const static char COMMAND_DELIMITER = ',';
 
 
 // measure
-#define MEASURE_LOG_SIZE               4000000
+#define MEASURE_LOG_SIZE               2000000
 
 #endif //CONSTANT_H
