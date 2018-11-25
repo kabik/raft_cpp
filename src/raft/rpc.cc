@@ -75,6 +75,7 @@ typedef struct _response_request_location {
 
 typedef struct _client_command {
 	RPCKind rpcKind;
+	int commandId;
 	char command[COMMAND_STR_LENGTH];
 } client_command;
 
@@ -168,9 +169,11 @@ void rrlByFields(
 // create client_command by fields
 void ccByFields(
 	client_command* cc,
+	int commandId,
 	const char command[COMMAND_STR_LENGTH]
 ) {
 	cc->rpcKind = RPC_KIND_CLIENT_COMMAND;
+	cc->commandId = commandId;
 	memcpy(cc->command, command, COMMAND_STR_LENGTH);
 }
 
@@ -257,8 +260,9 @@ void str2rrl(char str[MESSAGE_SIZE], response_request_location* rrl) {
 void str2cc(char str[MESSAGE_SIZE], client_command* cc) {
 	sscanf(
 		str,
-		"%d %s",
+		"%d %d %s",
 		&cc->rpcKind,
+		&cc->commandId,
 		&cc->command
 	);
 }
@@ -347,8 +351,9 @@ void rrl2str(response_request_location* rrl, char str[MESSAGE_SIZE]) {
 void cc2str(client_command* cc, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
-		"%d %s",
+		"%d %d %s",
 		cc->rpcKind,
+		cc->commandId,
 		cc->command
 	);
 }
