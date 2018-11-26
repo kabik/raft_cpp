@@ -214,11 +214,10 @@ int main(int argc, char* argv[]) {
 			perror("recv");
 			exit(1);
 		}
-
 		str2cm(rmsg, cm);
 		cnt = (cnt + 1) % OUTPUT_EACH;
 		if (cnt == 0) {
-			cout << "commit " << cm->commitIndex << endl;
+			cout << "commit " << cm->commandId << endl;
 		}
 	}
 	end = std::chrono::system_clock::now();

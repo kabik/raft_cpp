@@ -1,8 +1,11 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include<mutex>
+
 class Node {
 private:
+	int id;
 	string* hostname;
 	int listenPort;
 	int receiveSock;
@@ -11,6 +14,9 @@ private:
 
 public:
 	Node(string* hostname, int port);
+
+	int getID();
+	void setID(int id);
 
 	void _send(char* message, int length);
 

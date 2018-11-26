@@ -9,13 +9,6 @@ RaftNode::RaftNode(string* hostname, int port) : Node(hostname, port) {
 	this->isme       = false;
 }
 
-int RaftNode::getID() {
-	return this->id;
-}
-void RaftNode::setID(int id) {
-	this->id = id;
-}
-
 int RaftNode::getNextIndex() {
 	return this->nextIndex;
 }
