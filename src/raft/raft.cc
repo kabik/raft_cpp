@@ -650,7 +650,9 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 
 	if (rae->isRequestRead) {
 		// read request
+		raft->lock();
 		int clientId = raft->getClientIdByRpcId(rae->rpcId);
+		raft->unlock();
 		if (clientId >= 0 && rae->success) {
 			ClientNode* cNode = raft->getClientNodes()->at(clientId);
 			cNode->grant(rNode->getID());
@@ -745,7 +747,9 @@ static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
 		if (cc->command[0] == READ) {
 			cNode->resetReadGrants( raft->getRaftNodes()->size() );
 			int rpcId = myrand(0, RPC_ID_MAX);
+			raft->lock();
 			raft->putReadRPCId(rpcId, cNode->getID());
+			raft->unlock();
 
 			for (RaftNode* rNode : *raft->getRaftNodes()) {
 				if (!rNode->isMe()) {
