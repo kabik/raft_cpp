@@ -56,6 +56,21 @@ Raft::Raft(char* configFileName) {
 	// others
 	this->leaderTerm = this->status->getCurrentTerm();
 	this->vote = 0;
+
+	this->commitCount = 0;
+}
+
+
+void Raft::lock() { _mtx.lock(); }
+void Raft::unlock() { _mtx.unlock(); }
+
+int Raft::incrementCommitCount() {
+	int ret;
+	_mtx.lock();
+	ret = ++this->commitCount;
+	_mtx.unlock();
+
+	return ret;
 }
 
 // to use receive thread
@@ -187,9 +202,6 @@ void Raft::receive() {
 	}
 }
 
-void Raft::lock() { _mtx.lock(); }
-void Raft::unlock() { _mtx.unlock(); }
-
 // to use timer thread
 void Raft::timer() {
 	Status* status = this->getStatus();
@@ -237,7 +249,7 @@ void Raft::timer() {
 
 					free(cm);
 
-					if (status->getLastApplied() == MEASURE_LOG_SIZE-1) {
+					if (this->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
 						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count() / 1000;
 						cout << "input time = " << elapsed << " sec.\n";
 					}
@@ -676,6 +688,11 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 				sendMessage(raft, cNode, smsg, MESSAGE_SIZE);
 				cNode->setCommittedCommandId(lastCommandId);
 				free(cm);
+
+				if (raft->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
+					double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count() / 1000;
+					cout << "input time = " << elapsed << " sec.\n";
+				}
 			}
 		}
 	} else {
@@ -898,9 +915,13 @@ static void* work(void* args) {
 		RPCKind rpcKind = discernRPC(buf);
 
 		if (rpcKind < 0) {
-			cout << "illegal rpc" << endl;
+			if (rNode != NULL) {
+				cout << "illegal rpc: \"" << buf << "\" from raftNode[" << rNode->getID() << "]" << endl;
+			} else {
+				cout << "illegal rpc: \"" << buf << "\" from clientNode[" << cNode->getID() << "]" << endl;
+			}
 			(isClient) ? cNode->setReceiveSock(-1) : rNode->setReceiveSock(-1);
-			break;
+			continue;
 
 		} else if (rpcKind == RPC_KIND_APPEND_ENTRIES) {
 			appendEntriesRecieved(raft, rNode, buf);

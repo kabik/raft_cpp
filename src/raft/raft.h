@@ -42,7 +42,8 @@ private:
 	int leaderTerm;
 	int vote;
 
-	//vector<bool> readGrants;
+	int commitCount;
+
 	map<int, int> readRPCIds;
 
 	/* === private functions === */
@@ -55,6 +56,8 @@ public:
 
 	void lock();
 	void unlock();
+
+	int incrementCommitCount();
 
 	void receive();
 	void timer();

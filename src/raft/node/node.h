@@ -5,6 +5,8 @@
 
 class Node {
 private:
+	mutex _mtx;
+
 	int id;
 	string* hostname;
 	int listenPort;
