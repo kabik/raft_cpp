@@ -199,9 +199,11 @@ int main(int argc, char* argv[]) {
 	start = std::chrono::system_clock::now();
 
 	int cnt = 0;
+	unsigned int cid = 0;
 	for (int i = 0; i < commandList.size(); i++) {
 		strcpy(smsg, "");
 		strcpy(cc->command, commandList[i].c_str());
+		cc->commandId = cid++;
 		cc2str(cc, smsg);
 
 		if (S_SEND(fd, smsg, MESSAGE_SIZE, 0) < 0) {
@@ -212,11 +214,10 @@ int main(int argc, char* argv[]) {
 			perror("recv");
 			exit(1);
 		}
-
 		str2cm(rmsg, cm);
 		cnt = (cnt + 1) % OUTPUT_EACH;
 		if (cnt == 0) {
-			cout << "commit " << cm->commitIndex << endl;
+			cout << "commit " << cm->commandId << endl;
 		}
 	}
 	end = std::chrono::system_clock::now();

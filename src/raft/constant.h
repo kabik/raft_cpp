@@ -21,15 +21,19 @@ const static char ENTRIES_DELIMITER = '/';
 const static char ENTRY_DELIMITER   = ':';
 const static char COMMAND_DELIMITER = ',';
 
+const static char UPDATE            = 'W';
+const static char READ              = 'R';
+const static char DELETE            = 'D';
+
 // timeout related
 #define MIN_TIMEOUTTIME_MICROSECONDS   1000000  // 1     sec
 #define MAX_TIMEOUTTIME_MICROSECONDS   1500000  // 1.5  sec
 
 // append entries rpc related
 #define HEARTBEAT_INTERVAL             50000   // 0.05 sec
-
+#define RPC_ID_MAX                     1000000000
 
 // measure
-#define MEASURE_LOG_SIZE               2000000
+#define MEASURE_LOG_SIZE               1000000
 
 #endif //CONSTANT_H

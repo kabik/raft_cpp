@@ -40,6 +40,8 @@ typedef struct _append_entries_rpc {
 	int prevLogIndex;
 	int prevLogTerm;
 	int leaderCommit; // leader's commitIndex
+	int rpcId;
+	bool isRequestRead;
 	char entries[ENTRIES_STR_LENGTH];
 } append_entries_rpc;
 
@@ -54,6 +56,8 @@ typedef struct _request_vote_rpc {
 typedef struct _response_append_entries {
 	RPCKind rpcKind;
 	int term;
+	int rpcId;
+	bool isRequestRead;
 	bool success;
 } response_append_entries;
 
@@ -75,12 +79,13 @@ typedef struct _response_request_location {
 
 typedef struct _client_command {
 	RPCKind rpcKind;
+	int commandId;
 	char command[COMMAND_STR_LENGTH];
 } client_command;
 
 typedef struct _commit_message {
 	RPCKind rpcKind;
-	int commitIndex;
+	int commandId;
 } commit_message;
 
 RPCKind discernRPC(char* str) {
@@ -91,6 +96,7 @@ RPCKind discernRPC(char* str) {
 	return (RPCKind)-1;
 }
 
+
 // create append_entries_rpc by fields
 void arpcByFields(
 	append_entries_rpc* arpc,
@@ -99,6 +105,8 @@ void arpcByFields(
 	int prevLogIndex,
 	int prevLogTerm,
 	int leaderCommit,
+	int rpcId,
+	bool isRequestRead,
 	char entries[ENTRIES_STR_LENGTH]
 ) {
 	arpc->rpcKind       = RPC_KIND_APPEND_ENTRIES;
@@ -107,6 +115,8 @@ void arpcByFields(
 	arpc->prevLogIndex  = prevLogIndex;
 	arpc->prevLogTerm   = prevLogTerm;
 	arpc->leaderCommit  = leaderCommit;
+	arpc->rpcId         = rpcId;
+	arpc->isRequestRead = isRequestRead;
 	memcpy(arpc->entries, entries, ENTRIES_STR_LENGTH);
 }
 
@@ -129,11 +139,15 @@ void rrpcByFields(
 void raeByFields(
 	response_append_entries* rae,
 	int term,
+	int rpcId,
+	bool isRequestRead,
 	bool success
 ) {
-	rae->rpcKind = RPC_KIND_RESPONSE_APPEND_ENTRIES;
-	rae->term    = term;
-	rae->success = success;
+	rae->rpcKind       = RPC_KIND_RESPONSE_APPEND_ENTRIES;
+	rae->term          = term;
+	rae->rpcId         = rpcId;
+	rae->isRequestRead = isRequestRead;
+	rae->success       = success;
 }
 
 // create response_request_vote by fields
@@ -168,32 +182,37 @@ void rrlByFields(
 // create client_command by fields
 void ccByFields(
 	client_command* cc,
+	int commandId,
 	const char command[COMMAND_STR_LENGTH]
 ) {
 	cc->rpcKind = RPC_KIND_CLIENT_COMMAND;
+	cc->commandId = commandId;
 	memcpy(cc->command, command, COMMAND_STR_LENGTH);
 }
 
 // create commit_message by fields
 void cmByFields(
 	commit_message* cm,
-	int commitIndex
+	int commandId
 ) {
 	cm->rpcKind = RPC_KIND_COMMIT_MESSAGE;
-	cm->commitIndex = commitIndex;
+	cm->commandId = commandId;
 }
+
 
 // char[] to append_entries_rpc
 void str2arpc(char str[MESSAGE_SIZE], append_entries_rpc* arpc) {
 	sscanf(
 		str,
-		"%d %d %d %d %d %d %s",
+		"%d %d %d %d %d %d %d %d %s",
 		&arpc->rpcKind,
 		&arpc->term,
 		&arpc->leaderId,
 		&arpc->prevLogIndex,
 		&arpc->prevLogTerm,
 		&arpc->leaderCommit,
+		&arpc->rpcId,
+		&arpc->isRequestRead,
 		&arpc->entries
 	);
 }
@@ -215,9 +234,11 @@ void str2rrpc(char str[MESSAGE_SIZE], request_vote_rpc* rrpc) {
 void str2rae(char str[MESSAGE_SIZE], response_append_entries* rae) {
 	sscanf(
 		str,
-		"%d %d %d",
+		"%d %d %d %d %d",
 		&rae->rpcKind,
 		&rae->term,
+		&rae->rpcId,
+		&rae->isRequestRead,
 		&rae->success
 	);
 }
@@ -257,8 +278,9 @@ void str2rrl(char str[MESSAGE_SIZE], response_request_location* rrl) {
 void str2cc(char str[MESSAGE_SIZE], client_command* cc) {
 	sscanf(
 		str,
-		"%d %s",
+		"%d %d %s",
 		&cc->rpcKind,
+		&cc->commandId,
 		&cc->command
 	);
 }
@@ -269,21 +291,24 @@ void str2cm(char str[MESSAGE_SIZE], commit_message* cm) {
 		str,
 		"%d %d",
 		&cm->rpcKind,
-		&cm->commitIndex
+		&cm->commandId
 	);
 }
+
 
 // append_entries_rpc to char[]
 void arpc2str(append_entries_rpc* arpc, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
-		"%d %d %d %d %d %d %s",
+		"%d %d %d %d %d %d %d %d %s",
 		arpc->rpcKind,
 		arpc->term,
 		arpc->leaderId,
 		arpc->prevLogIndex,
 		arpc->prevLogTerm,
 		arpc->leaderCommit,
+		arpc->rpcId,
+		arpc->isRequestRead,
 		arpc->entries
 	);
 }
@@ -305,9 +330,11 @@ void rrpc2str(request_vote_rpc* rrpc, char str[MESSAGE_SIZE]) {
 void rae2str(response_append_entries* rae, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
-		"%d %d %d",
+		"%d %d %d %d %d",
 		rae->rpcKind,
 		rae->term,
+		rae->rpcId,
+		rae->isRequestRead,
 		rae->success
 	);
 }
@@ -347,8 +374,9 @@ void rrl2str(response_request_location* rrl, char str[MESSAGE_SIZE]) {
 void cc2str(client_command* cc, char str[MESSAGE_SIZE]) {
 	sprintf(
 		str,
-		"%d %s",
+		"%d %d %s",
 		cc->rpcKind,
+		cc->commandId,
 		cc->command
 	);
 }
@@ -359,8 +387,9 @@ void cm2str(commit_message* cm, char str[MESSAGE_SIZE]) {
 		str,
 		"%d %d",
 		cm->rpcKind,
-		cm->commitIndex
+		cm->commandId
 	);
 }
+
 
 #endif //RPC_CC
