@@ -345,46 +345,6 @@ void Raft::setRaftNodesByConfig() {
 	freeifaddrs(ifa_list);
 }
 
-void Raft::cli() {
-	char cKind[COMMAND_KIND_LENGTH];
-	char key[KEY_LENGTH];
-	int value;
-
-	while (1) {
-		cout << "> ";
-		string s;
-		getline(cin, s);
-
-		if (this->getStatus()->isLeader()) {
-			vector<string> vec = split(s, COMMAND_DELIMITER);
-
-			if (vec.size() > 2) {
-				value = stoi(vec[2]);
-			} else {
-				continue;
-			}
-
-			memset(cKind, 0, sizeof(cKind));
-			memset(key  , 0, sizeof(key  ));
-			vec[0].copy(cKind, vec[0].size());
-			vec[1].copy(key  , vec[1].size());
-
-			// add to log
-			char command[COMMAND_STR_LENGTH];
-			if (vec.size() > 2) {
-				sprintf(command, "%s%c%s%c%d", cKind, COMMAND_DELIMITER, key, COMMAND_DELIMITER, value);
-			} else {
-				sprintf(command, "%s%c%s"    , cKind, COMMAND_DELIMITER, key);
-			}
-			int cTerm = this->getStatus()->getCurrentTerm();
-			this->getStatus()->getLog()->add(cTerm, command);
-
-		} else {
-			cout << "I am NOT LEADER!\n";
-		}
-	}
-}
-
 vector<RaftNode*>* Raft::getRaftNodes() {
 	return this->raftNodes;
 }
@@ -584,11 +544,12 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 
 			// add to log
 			int term = stoi(vec[0]);
+			int conn_id = stoi(vec[1]);
 			char command[COMMAND_STR_LENGTH];
-			memcpy(command, vec[1].c_str(), vec[1].size());
-			command[vec[1].size()] = '\0';
+			memcpy(command, vec[2].c_str(), vec[2].size());
+			command[vec[2].size()] = '\0';
 			if (term >= 0) {
-				log->add(term, command);
+				log->add(term, conn_id, command);
 			}
 		}
 
@@ -763,7 +724,7 @@ static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
 		cNode->setLastCommandId(cc->commandId);
 		if (cc->command[0] == READ) {
 			cNode->resetReadGrants( raft->getRaftNodes()->size() );
-			int rpcId = myrand(0, RPC_ID_MAX);
+			int rpcId = myrand(0, RPC_ID_MAX / CLIENTS_MAX) + cNode->getID();
 			raft->lock();
 			raft->putReadRPCId(rpcId, cNode->getID());
 			raft->unlock();
@@ -774,7 +735,7 @@ static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
 				}
 			}
 		} else {
-			status->getLog()->add(status->getCurrentTerm(), cc->command);
+			status->getLog()->add(status->getCurrentTerm(), cNode->getReceiveSock(), cc->command);
 		}
 		cNode->setLastIndex(status->getLog()->lastLogIndex());
 	} else {

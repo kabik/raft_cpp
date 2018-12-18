@@ -23,9 +23,10 @@ public:
 	int lastLogIndex();
 	int lastLogTerm();
 	int getTerm(int index);
+	int getConnectionId(int index);
 	bool match(int index, int term);
 	entry* get(int index);
-	void add(int term, const char command[COMMAND_STR_LENGTH]);
+	void add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]);
 
 	void printAll();
 };

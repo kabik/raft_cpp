@@ -40,6 +40,11 @@ int Log::getTerm(int index) {
 		-1 : this->get(index)->term;
 }
 
+int Log::getConnectionId(int index) {
+	return (index < 0 || index > this->lastLogIndex()) ?
+		-1 : this->get(index)->conn_id;
+}
+
 bool Log::match(int index, int term) {
 	return index < 0                    ||
 	       term == this->getTerm(index);
@@ -53,13 +58,13 @@ entry* Log::get(int index) {
 	return e;
 }
 
-void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
+void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	// set string
 	entry* e = NULL;
 	while (e == NULL) {
 		e = (entry*)malloc(sizeof(entry));
 	}
-	fields2entry(e, term, command);
+	fields2entry(e, term, conn_id, command);
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
 

@@ -6,10 +6,10 @@
 #define PORT_LENGTH                    6
 
 // communication related
-#define MESSAGE_SIZE                   2048
+#define MESSAGE_SIZE                   1024
 
 // RPC's message length related
-#define ENTRIES_STR_LENGTH             1024
+#define ENTRIES_STR_LENGTH             768
 #define ENTRY_STR_LENGTH               32
 #define COMMAND_STR_LENGTH             22
 #define COMMAND_KIND_LENGTH            3
@@ -32,6 +32,7 @@ const static char DELETE            = 'D';
 // append entries rpc related
 #define HEARTBEAT_INTERVAL             50000   // 0.05 sec
 #define RPC_ID_MAX                     1000000000
+#define CLIENTS_MAX                    1000
 
 // measure
 #define MEASURE_LOG_SIZE               1000000
