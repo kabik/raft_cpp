@@ -72,14 +72,26 @@ void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	_mtx.lock();
 
 	auto out = this->getOFStream(true);
-	*out << str << endl;
+	*out << str << endl << std::flush;
 	this->_log.push_back(e);
 
 	_mtx.unlock();
+}
 
-	// print
-	//cout << "log[" << this->lastLogIndex() << "] = \"" << str << "\"" << endl;
-	//printAll();
+void Log::add(entry* entries[], int num) {
+	_mtx.lock();
+	auto out = this->getOFStream(true);
+	for (int i = 0; i < num; i++) {
+		entry* e = entries[i];
+		char str[COMMAND_STR_LENGTH];
+		entry2str(e, str);
+
+		// add to log
+		*out << str << endl;
+		this->_log.push_back(e);
+	}
+	*out << std::flush;
+	_mtx.unlock();
 }
 
 void Log::printAll() {

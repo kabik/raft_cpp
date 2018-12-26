@@ -215,8 +215,7 @@ void Raft::timer() {
 				this->resetStartTime();
 				for (RaftNode* rNode : *this->getRaftNodes()) {
 					if (!rNode->isMe()) {
-						int rpcId = myrand(0, RPC_ID_MAX);
-						this->sendAppendEntriesRPC(rNode, rpcId, true, false);
+						this->sendAppendEntriesRPC(rNode, 0, true, false);
 					}
 				}
 			} else {
@@ -225,8 +224,7 @@ void Raft::timer() {
 					    log->lastLogIndex() >= rNode->getNextIndex()  &&
 					    rNode->getNextIndex() > rNode->getSentIndex()
 					) {
-						int rpcId = myrand(0, RPC_ID_MAX);
-						this->sendAppendEntriesRPC(rNode, rpcId, false, false);
+						this->sendAppendEntriesRPC(rNode, 0, false, false);
 					}
 				}
 			}
@@ -428,17 +426,30 @@ void Raft::apply(int index) {
 
 void Raft::sendAppendEntriesRPC(RaftNode* rNode, int rpcId, bool isHeartBeat, bool isRequestRead) {
 	Status* status = this->getStatus();
+	Log* log = status->getLog();
 
 	// send heartbeat
 	char msg[MESSAGE_SIZE];
 	append_entries_rpc* arpc = (append_entries_rpc*)malloc(sizeof(append_entries_rpc));
 
 	int nextIndex = rNode->getNextIndex();
-	char entriesStr[ENTRIES_STR_LENGTH] = "";
-	entriesStr[0] = '\0';
+	int lastIndex = log->lastLogIndex();
+	lastIndex = ( lastIndex - nextIndex + 1 <= MAX_NUM_OF_ENTRIES ) ?
+		lastIndex : nextIndex + MAX_NUM_OF_ENTRIES - 1;
+
+	char entriesStr[ENTRIES_STR_LENGTH] = {};
+	int strLength = 0;
 	if (!isHeartBeat) {
-		entry* e = status->getLog()->get(nextIndex);
-		entry2str(e, entriesStr);
+		for (int i = nextIndex; i <= lastIndex; i++) {
+			char entryStr[ENTRY_STR_LENGTH] = {};
+			entry* e = status->getLog()->get(i);
+			entry2str(e, entryStr);
+
+			memcpy(entriesStr + strlen(entriesStr), entryStr, ENTRY_STR_LENGTH);
+			if (i < lastIndex) {
+				entriesStr[strlen(entriesStr)] = ENTRIES_DELIMITER;
+			}
+		}
 	}
 
 	arpcByFields(
@@ -455,7 +466,7 @@ void Raft::sendAppendEntriesRPC(RaftNode* rNode, int rpcId, bool isHeartBeat, bo
 	arpc2str(arpc, msg);
 	sendMessage(this, rNode, msg, MESSAGE_SIZE);
 	if (!isHeartBeat) {
-		rNode->setSentIndex(nextIndex);
+		rNode->setSentIndex(lastIndex);
 	}
 
 	free(arpc);
@@ -536,21 +547,19 @@ static void appendEntriesRecieved(Raft* raft, RaftNode* rNode, char* msg) {
 
 		// push entries to log
 		if ('0' <= arpc->entries[0] && arpc->entries[0] <= '9') {
-			char entryStr[ENTRY_STR_LENGTH];
-			memcpy(entryStr, arpc->entries, ENTRY_STR_LENGTH);
+			char entriesStr[ENTRIES_STR_LENGTH];
+			memcpy(entriesStr, arpc->entries, ENTRIES_STR_LENGTH);
 
-			// split
-			vector<string> vec = split(entryStr, ENTRY_DELIMITER);
+			vector<string> entriesVec = split(entriesStr, ENTRIES_DELIMITER);
+			int numOfEntries = entriesVec.size();
+			entry *entries[numOfEntries];
 
-			// add to log
-			int term = stoi(vec[0]);
-			int conn_id = stoi(vec[1]);
-			char command[COMMAND_STR_LENGTH];
-			memcpy(command, vec[2].c_str(), vec[2].size());
-			command[vec[2].size()] = '\0';
-			if (term >= 0) {
-				log->add(term, conn_id, command);
+			for (int i = 0; i < numOfEntries; i++) {
+				vector<string> vec = split(entriesVec[i].c_str(), ENTRY_DELIMITER);
+				entries[i] = (entry*)malloc(sizeof(entry));
+				fields2entry(entries[i], stoi(vec[0]), stoi(vec[1]), vec[2].c_str());
 			}
+			log->add(entries, numOfEntries);
 		}
 
 		// update commitIndex
@@ -659,13 +668,12 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 	} else {
 		int nIndex = rNode->getNextIndex();
 		if (rae->success) {
-			if (nIndex <= rNode->getSentIndex()) {
+			for (; nIndex <= rNode->getSentIndex(); nIndex++) {
 				status->incrementSavedCount(nIndex);
 
 				if (status->getSavedCount(nIndex) > clusterSize / 2 && nIndex > status->getCommitIndex()) {
 					status->setCommitIndex(nIndex);
 				}
-				nIndex++;
 			}
 		} else {
 			nIndex--;

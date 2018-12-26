@@ -27,6 +27,7 @@ public:
 	bool match(int index, int term);
 	entry* get(int index);
 	void add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]);
+	void add(entry* entries[], int num);
 
 	void printAll();
 };

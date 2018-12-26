@@ -11,6 +11,7 @@
 // RPC's message length related
 #define ENTRIES_STR_LENGTH             768
 #define ENTRY_STR_LENGTH               32
+#define MAX_NUM_OF_ENTRIES             24
 #define COMMAND_STR_LENGTH             22
 #define COMMAND_KIND_LENGTH            3
 #define COMMIT_MESSAGE_LENGTH          32
