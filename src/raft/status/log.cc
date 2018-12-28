@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 
 #include "log.h"
 #include "entry.cc"
@@ -71,26 +72,29 @@ void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	// add to log
 	_mtx.lock();
 
-	auto out = this->getOFStream(true);
-	*out << str << endl << std::flush;
+	//auto out = this->getOFStream(true);
+	//*out << str << endl << std::flush;
 	this->_log.push_back(e);
 
+	usleep(8);
 	_mtx.unlock();
 }
 
 void Log::add(entry* entries[], int num) {
 	_mtx.lock();
-	auto out = this->getOFStream(true);
+	//auto out = this->getOFStream(true);
 	for (int i = 0; i < num; i++) {
 		entry* e = entries[i];
 		char str[COMMAND_STR_LENGTH];
 		entry2str(e, str);
 
 		// add to log
-		*out << str << endl;
+		//*out << str << endl;
 		this->_log.push_back(e);
 	}
-	*out << std::flush;
+	//*out << std::flush;
+	usleep(8);
+
 	_mtx.unlock();
 }
 
