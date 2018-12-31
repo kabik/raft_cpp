@@ -76,7 +76,7 @@ void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	//*out << str << endl << std::flush;
 	this->_log.push_back(e);
 
-	usleep(8);
+	usleep(STORAGE_LATENCY);
 	_mtx.unlock();
 }
 
@@ -93,7 +93,7 @@ void Log::add(entry* entries[], int num) {
 		this->_log.push_back(e);
 	}
 	//*out << std::flush;
-	usleep(8);
+	usleep(STORAGE_LATENCY);
 
 	_mtx.unlock();
 }

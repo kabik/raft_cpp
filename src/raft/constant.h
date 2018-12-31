@@ -6,12 +6,12 @@
 #define PORT_LENGTH                    6
 
 // communication related
-#define MESSAGE_SIZE                   1024
+#define MESSAGE_SIZE                   2560
 
 // RPC's message length related
-#define ENTRIES_STR_LENGTH             768
+#define MAX_NUM_OF_ENTRIES             64
 #define ENTRY_STR_LENGTH               32
-#define MAX_NUM_OF_ENTRIES             24
+#define ENTRIES_STR_LENGTH             ENTRY_STR_LENGTH * MAX_NUM_OF_ENTRIES
 #define COMMAND_STR_LENGTH             22
 #define COMMAND_KIND_LENGTH            3
 #define COMMIT_MESSAGE_LENGTH          32
@@ -36,6 +36,9 @@ const static char DELETE            = 'D';
 #define CLIENTS_MAX                    1000
 
 // measure
-#define MEASURE_LOG_SIZE               1000000
+#define MEASURE_LOG_SIZE               200000
+
+// storage latency
+#define STORAGE_LATENCY                8       // μs
 
 #endif //CONSTANT_H
