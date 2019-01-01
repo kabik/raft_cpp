@@ -23,10 +23,18 @@ Log::Log(string storageDirectoryName) : FileHandler(storageDirectoryName + "log"
 	printAll();
 
 	closeIFStream();
+
+	this->lastSyncedIndex = this->lastLogIndex();
 }
 
 int Log::size() {
-	return this->_log.size();
+	int ret;
+
+	_mtx.lock();
+	ret = this->_log.size();
+	_mtx.unlock();
+
+	return ret;
 }
 
 int Log::lastLogIndex() {
@@ -59,6 +67,7 @@ entry* Log::get(int index) {
 	return e;
 }
 
+// Leader
 void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	// set string
 	entry* e = NULL;
@@ -76,13 +85,13 @@ void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	//*out << str << endl << std::flush;
 	this->_log.push_back(e);
 
-	usleep(STORAGE_LATENCY);
 	_mtx.unlock();
 }
 
+// Follower
 void Log::add(entry* entries[], int num) {
 	_mtx.lock();
-	//auto out = this->getOFStream(true);
+	auto out = this->getOFStream(true);
 	for (int i = 0; i < num; i++) {
 		entry* e = entries[i];
 		char str[COMMAND_STR_LENGTH];
@@ -96,6 +105,28 @@ void Log::add(entry* entries[], int num) {
 	usleep(STORAGE_LATENCY);
 
 	_mtx.unlock();
+}
+
+int Log::getLastSyncedIndex() {
+	return this->lastSyncedIndex;
+}
+
+void Log::sync() {
+	auto out = this->getOFStream(true);
+
+	int lastIndex = this->lastLogIndex();
+	for (int i = this->getLastSyncedIndex() + 1; i <= lastIndex; i++) {
+		entry* e = this->get(i);
+		char str[COMMAND_STR_LENGTH];
+		entry2str(e, str);
+
+		//*out << str << endl;
+		usleep(STORAGE_LATENCY);
+	}
+	//*out << std::flush;
+
+	this->lastSyncedIndex = lastIndex;
+
 }
 
 void Log::printAll() {

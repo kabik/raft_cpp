@@ -211,6 +211,9 @@ void Raft::timer() {
 	while(1) {
 		// Leader
 		if (status->isLeader()) {
+			if (log->getLastSyncedIndex() < log->lastLogIndex()) {
+				log->sync();
+			}
 			if (this->getDuration().count() > HEARTBEAT_INTERVAL) {
 				this->resetStartTime();
 				for (RaftNode* rNode : *this->getRaftNodes()) {
@@ -436,6 +439,8 @@ void Raft::sendAppendEntriesRPC(RaftNode* rNode, int rpcId, bool isHeartBeat, bo
 	int lastIndex = log->lastLogIndex();
 	lastIndex = ( lastIndex - nextIndex + 1 <= MAX_NUM_OF_ENTRIES ) ?
 		lastIndex : nextIndex + MAX_NUM_OF_ENTRIES - 1;
+	lastIndex = ( lastIndex <= log->getLastSyncedIndex() ) ?
+		lastIndex : log->getLastSyncedIndex();
 
 	char entriesStr[ENTRIES_STR_LENGTH] = {};
 	int strLength = 0;

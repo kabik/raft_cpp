@@ -15,6 +15,7 @@ class Log : public FileHandler {
 private:
 	std::mutex _mtx;
 	vector<entry* > _log;
+	int lastSyncedIndex;
 
 public:
 	Log(string storageDirectoryName);
@@ -28,6 +29,8 @@ public:
 	entry* get(int index);
 	void add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]);
 	void add(entry* entries[], int num);
+	int getLastSyncedIndex();
+	void sync();
 
 	void printAll();
 };
