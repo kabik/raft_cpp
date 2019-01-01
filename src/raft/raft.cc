@@ -248,8 +248,8 @@ void Raft::timer() {
 					free(cm);
 
 					if (this->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
-						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count() / 1000;
-						cout << "input time = " << elapsed << " sec.\n";
+						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
+						cout << "input time = " << elapsed / 1000 << " sec.\n";
 					}
 				}
 			}
@@ -660,8 +660,8 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 				free(cm);
 
 				if (raft->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
-					double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count() / 1000;
-					cout << "input time = " << elapsed << " sec.\n";
+					double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
+					cout << "input time = " << elapsed / 1000 << " sec.\n";
 				}
 			}
 		}
