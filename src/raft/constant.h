@@ -34,6 +34,6 @@ const static char DELETE            = 'D';
 #define RPC_ID_MAX                     1000000000
 
 // measure
-#define MEASURE_LOG_SIZE               1000000
+#define MEASURE_LOG_SIZE               200000
 
 #endif //CONSTANT_H

@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
 		str2cm(rmsg, cm);
 		cnt = (cnt + 1) % OUTPUT_EACH;
 		if (cnt == 0) {
-			cout << "commit " << cm->commandId << endl;
+			cout << "commit " << cid << endl;
 		}
 	}
 	end = std::chrono::system_clock::now();
