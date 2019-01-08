@@ -6,7 +6,7 @@
 #define PORT_LENGTH                    6
 
 // communication related
-#define MESSAGE_SIZE                   2048
+#define MESSAGE_SIZE                   2560
 
 // RPC's message length related
 #define ENTRIES_STR_LENGTH             1024

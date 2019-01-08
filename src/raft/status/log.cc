@@ -1,5 +1,4 @@
 #include <iostream>
-#include <unistd.h>
 
 #include "log.h"
 #include "entry.cc"
@@ -67,9 +66,8 @@ void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	// add to log
 	_mtx.lock();
 
-	//auto out = this->getOFStream(true);
-	//*out << str << endl;
-	usleep(8);
+	auto out = this->getOFStream(true);
+	*out << str << endl;
 	this->_log.push_back(e);
 
 	_mtx.unlock();
