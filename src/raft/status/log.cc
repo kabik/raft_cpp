@@ -64,12 +64,10 @@ void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
 	entry2str(e, str);
 
 	// add to log
-	_mtx.lock();
-
 	auto out = this->getOFStream(true);
-	*out << str << endl;
+	_mtx.lock();
+	*out << str << endl << std::flush;
 	this->_log.push_back(e);
-
 	_mtx.unlock();
 
 	// print
