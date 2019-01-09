@@ -5,6 +5,8 @@ ClientNode::ClientNode(string* hostname, int port) : Node(hostname, port) {
 	this->commitIndex = -1;
 	this->lastCommandId      = -1;
 	this->committedCommandId = -1;
+	this->needReadRequest = false;
+	this->readRPCID = -1;
 }
 
 int ClientNode::getLastIndex() {
@@ -35,6 +37,30 @@ void ClientNode::setCommittedCommandId(int committedCommandId) {
 	this->committedCommandId = committedCommandId;
 }
 
+void ClientNode::setReadRPCID(int rpcid) {
+	_mtx.lock();
+	this->readRPCID = rpcid;
+	_mtx.unlock();
+}
+int ClientNode::getReadRPCID() {
+	int ret;
+	_mtx.lock();
+	ret = this->readRPCID;
+	_mtx.unlock();
+	return ret;
+}
+void ClientNode::setNeedReadRequest(bool b) {
+	_mtx.lock();
+	this->needReadRequest = b;
+	_mtx.unlock();
+}
+bool ClientNode::getNeedReadRequest() {
+	bool ret;
+	_mtx.lock();
+	ret = this->needReadRequest;
+	_mtx.unlock();
+	return ret;
+}
 int ClientNode::getReadGrantsNum(int size) {
 	int num = 1; // myself
 	_mtx.lock();

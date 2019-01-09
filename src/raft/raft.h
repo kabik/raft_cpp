@@ -79,10 +79,6 @@ public:
 	vector<ClientNode*>* getClientNodes();
 	void addClientNode(ClientNode* cNode);
 
-	void putReadRPCId(int rpcId, int clientId);
-	void delReadRPCId(int rpcId);
-	int getClientIdByRpcId(int rpcId);
-
 	void setMe(int me);
 	int getMe();
 
