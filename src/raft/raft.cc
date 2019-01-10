@@ -257,6 +257,30 @@ void Raft::timer() {
 					}
 				}
 			}
+
+			// sent read commit message
+			int clusterSize = this->getRaftNodes()->size();
+			for (ClientNode* cNode : *this->getClientNodes()) {
+				if (cNode->getReadGrantsNum(clusterSize) > clusterSize / 2) {
+					int lastCommandId = cNode->getLastCommandId();
+
+					cNode->setCommittedCommandId(lastCommandId);
+					cNode->setReadRPCID(-1); // reset
+					cNode->resetReadGrants(clusterSize);
+
+					commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
+					cmByFields(cm, lastCommandId);
+					char smsg[MESSAGE_SIZE];
+					cm2str(cm, smsg);
+					sendMessage(this, cNode, smsg, MESSAGE_SIZE);
+					free(cm);
+
+					if (this->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
+						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
+						cout << "input time = " << elapsed / 1000 << " sec.\n";
+					}
+				}
+			}
 		}
 
 		// All states
@@ -347,46 +371,6 @@ void Raft::setRaftNodesByConfig() {
 	freeifaddrs(ifa_list);
 }
 
-void Raft::cli() {
-	char cKind[COMMAND_KIND_LENGTH];
-	char key[KEY_LENGTH];
-	int value;
-
-	while (1) {
-		cout << "> ";
-		string s;
-		getline(cin, s);
-
-		if (this->getStatus()->isLeader()) {
-			vector<string> vec = split(s, COMMAND_DELIMITER);
-
-			if (vec.size() > 2) {
-				value = stoi(vec[2]);
-			} else {
-				continue;
-			}
-
-			memset(cKind, 0, sizeof(cKind));
-			memset(key  , 0, sizeof(key  ));
-			vec[0].copy(cKind, vec[0].size());
-			vec[1].copy(key  , vec[1].size());
-
-			// add to log
-			char command[COMMAND_STR_LENGTH];
-			if (vec.size() > 2) {
-				sprintf(command, "%s%c%s%c%d", cKind, COMMAND_DELIMITER, key, COMMAND_DELIMITER, value);
-			} else {
-				sprintf(command, "%s%c%s"    , cKind, COMMAND_DELIMITER, key);
-			}
-			int cTerm = this->getStatus()->getCurrentTerm();
-			this->getStatus()->getLog()->add(cTerm, command);
-
-		} else {
-			cout << "I am NOT LEADER!\n";
-		}
-	}
-}
-
 vector<RaftNode*>* Raft::getRaftNodes() {
 	return this->raftNodes;
 }
@@ -403,22 +387,6 @@ vector<ClientNode*>* Raft::getClientNodes() {
 void Raft::addClientNode(ClientNode* cNode) {
 	this->clientNodes->push_back(cNode);
 }
-
-void Raft::putReadRPCId(int rpcId, int clientId) {
-	this->readRPCIds[rpcId] = clientId;
-}
-void Raft::delReadRPCId(int rpcId) {
-	this->readRPCIds.erase(rpcId);
-}
-int Raft::getClientIdByRpcId(int rpcId) {
-	int ret = -1;
-	if (this->readRPCIds.find(rpcId) != this->readRPCIds.end()) {
-		ret = this->readRPCIds[rpcId];
-	}
-
-	return ret;
-}
-
 
 void Raft::setMe(int me) {
 	this->me = me;
@@ -664,36 +632,10 @@ static void responseAppendEntriesReceived(Raft* raft, RaftNode* rNode, char* msg
 
 	if (rae->isRequestRead) {
 		// read request
-		raft->lock();
-		int clientId = raft->getClientIdByRpcId(rae->rpcId);
-		raft->unlock();
-		if (clientId >= 0 && rae->success) {
-			ClientNode* cNode = raft->getClientNodes()->at(clientId);
-			cNode->grant(rNode->getID());
-
-			raft->lock();
-			bool canSendCommit =
-				cNode->getReadGrantsNum(clusterSize) > clusterSize / 2 &&
-				raft->getClientIdByRpcId(rae->rpcId) >= 0;
-			if (canSendCommit) {
-				cNode->resetReadGrants(clusterSize);
-				raft->delReadRPCId(rae->rpcId);
-			}
-			raft->unlock();
-
-			if (canSendCommit) {
-				int lastCommandId = cNode->getLastCommandId();
-				commit_message* cm = (commit_message*)malloc(sizeof(commit_message));
-				cmByFields(cm, lastCommandId);
-				char smsg[MESSAGE_SIZE];
-				cm2str(cm, smsg);
-				sendMessage(raft, cNode, smsg, MESSAGE_SIZE);
-				cNode->setCommittedCommandId(lastCommandId);
-				free(cm);
-
-				if (raft->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
-					double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
-					cout << "input time = " << elapsed / 1000 << " sec.\n";
+		if (rae->success) {
+			for (ClientNode* cNode : *raft->getClientNodes()) {
+				if (cNode->getReadRPCID() == rae->rpcId) {
+					cNode->grant(rNode->getID());
 				}
 			}
 		}
@@ -766,10 +708,7 @@ static void clientCommandReceived(Raft* raft, ClientNode* cNode, char* msg) {
 		if (cc->command[0] == READ) {
 			cNode->resetReadGrants( raft->getRaftNodes()->size() );
 			int rpcId = myrand(0, RPC_ID_MAX);
-			raft->lock();
-			raft->putReadRPCId(rpcId, cNode->getID());
-			raft->unlock();
-
+			cNode->setReadRPCID(rpcId);
 			for (RaftNode* rNode : *raft->getRaftNodes()) {
 				if (!rNode->isMe()) {
 					raft->sendAppendEntriesRPC(rNode, rpcId, true, true);
