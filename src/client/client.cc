@@ -203,22 +203,26 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < commandList.size(); i++) {
 		strcpy(smsg, "");
 		strcpy(cc->command, commandList[i].c_str());
-		cc->commandId = cid++;
+		cc->commandId = cid;
 		cc2str(cc, smsg);
 
 		if (S_SEND(fd, smsg, MESSAGE_SIZE, 0) < 0) {
 			perror("write");
 			exit(1);
 		}
-		if (S_RECV(fd, rmsg, sizeof(rmsg), MSG_WAITALL) < 0) {
-			perror("recv");
-			exit(1);
+		while (true) {
+			if (S_RECV(fd, rmsg, sizeof(rmsg), MSG_WAITALL) < 0) {
+				perror("recv");
+				exit(1);
+			}
+			str2cm(rmsg, cm);
+			if (cm->commandId == cid) { break; }
 		}
-		str2cm(rmsg, cm);
 		cnt = (cnt + 1) % OUTPUT_EACH;
 		if (cnt == 0) {
 			cout << "commit " << cid << endl;
 		}
+		cid++;
 	}
 	end = std::chrono::system_clock::now();
 	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
