@@ -40,6 +40,8 @@ static void connect2raftnode(Raft* raft, RaftNode* rNode);
 static void startWorkerThread(Raft* raft, RaftNode* rNode, ClientNode* cNode, bool isClient);
 
 high_resolution_clock::time_point first_log_time;
+int group_size_w[5][MAX_NUM_OF_ENTRIES+1] = {0};
+int group_size_r[MAX_NUM_OF_ENTRIES+1] = {0};
 
 Raft::Raft(char* configFileName) {
 	this->config = new Config(configFileName);
@@ -233,6 +235,7 @@ void Raft::timer() {
 			}
 
 			// send read request
+			int read_cnt = 0;
 			int readRPCID = myrand(0, RPC_ID_MAX);
 			bool needRR = false;
 			for (ClientNode* cNode : *this->getClientNodes()) {
@@ -240,11 +243,13 @@ void Raft::timer() {
 					cNode->setNeedReadRequest(false);
 					cNode->setReadRPCID(readRPCID);
 					needRR = true;
+					read_cnt++;
 				}
 			}
 			if (needRR) {
 				for (RaftNode* rNode : *this->getRaftNodes()) { if (!rNode->isMe()) {
 					this->sendAppendEntriesRPC(rNode, readRPCID, true, true);
+					group_size_r[read_cnt]++;
 				}}
 			}
 
@@ -268,8 +273,7 @@ void Raft::timer() {
 					free(cm);
 
 					if (this->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
-						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
-						cout << "input time = " << elapsed / 1000 << " sec.\n";
+						outputMeasureResults();
 					}
 				}
 			}
@@ -292,8 +296,7 @@ void Raft::timer() {
 					free(cm);
 
 					if (this->incrementCommitCount() == MEASURE_LOG_SIZE-1) {
-						double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
-						cout << "input time = " << elapsed / 1000 << " sec.\n";
+						outputMeasureResults();
 					}
 				}
 			}
@@ -316,6 +319,30 @@ void Raft::timer() {
 			status->setLastApplied(applyIndex);
 		}
 	}
+}
+
+void Raft::outputMeasureResults() {
+	double elapsed = duration_cast<milliseconds>(high_resolution_clock::now() - first_log_time).count();
+	cout << "\n======== RESULT ========\n";
+	cout << MEASURE_LOG_SIZE << " requests." << endl;
+	cout << "Input time = " << elapsed / 1000 << " sec." << endl;
+
+	cout << "Write group size:" << endl;
+	int sum[MAX_NUM_OF_ENTRIES+1] = {0};
+	for (int i = 1; i <= MAX_NUM_OF_ENTRIES; i++) {
+		for (RaftNode* rNode : *this->getRaftNodes()) { if (!rNode->isMe()) {
+			int id = rNode->getID();
+			sum[i] += group_size_w[id][i];
+		}}
+		cout << sum[i] << ",";
+	}
+	cout << endl;
+
+	cout << "Read group size:" << endl;
+	for (int i = 1; i <= MAX_NUM_OF_ENTRIES; i++) {
+		cout << group_size_r[i] << ",";
+	}
+	cout << "\n========================\n";
 }
 
 void Raft::resetTimeoutTime() {
@@ -480,6 +507,11 @@ void Raft::sendAppendEntriesRPC(RaftNode* rNode, int rpcId, bool isHeartBeat, bo
 				entriesStr[strlen(entriesStr)] = ENTRIES_DELIMITER;
 			}
 		}
+
+		//if (lastIndex == log->lastLogIndex()) {
+		int group_size = lastIndex - nextIndex + 1;
+		group_size_w[rNode->getID()][group_size]++;
+		//}
 	}
 
 	arpcByFields(

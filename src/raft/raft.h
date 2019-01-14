@@ -51,6 +51,8 @@ private:
 
 	void candidacy();
 
+	void outputMeasureResults();
+
 public:
 	Raft(char* configFileName);
 
