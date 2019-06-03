@@ -2,13 +2,16 @@
 #define RAFT_H
 
 #include <vector>
+#include <map>
 #include <chrono>
 #include <mutex>
 
 using std::vector;
+using std::map;
 using std::chrono::high_resolution_clock;
 using std::chrono::microseconds;
 using std::mutex;
+
 
 class Config;
 class Status;
@@ -39,14 +42,24 @@ private:
 	int leaderTerm;
 	int vote;
 
+	int commitCount;
+
+	map<int, int> readRPCIds;
+
 	/* === private functions === */
 	void setRaftNodesByConfig();
 
-	void sendAppendEntriesRPC(RaftNode* rNode, bool isHeartBeat);
 	void candidacy();
+
+	void outputMeasureResults();
 
 public:
 	Raft(char* configFileName);
+
+	void lock();
+	void unlock();
+
+	int incrementCommitCount();
 
 	void receive();
 	void timer();
@@ -78,6 +91,8 @@ public:
 	void setVote(int vote);
 
 	void apply(int index);
+
+	void sendAppendEntriesRPC(RaftNode* rNode, int rpcId, bool isHeartBeat, bool isRequestRead);
 };
 
 #include "raft.cc"

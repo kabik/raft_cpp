@@ -22,10 +22,18 @@ Log::Log(string storageDirectoryName) : FileHandler(storageDirectoryName + "log"
 	printAll();
 
 	closeIFStream();
+
+	this->lastSyncedIndex = this->lastLogIndex();
 }
 
 int Log::size() {
-	return this->_log.size();
+	int ret;
+
+	_mtx.lock();
+	ret = this->_log.size();
+	_mtx.unlock();
+
+	return ret;
 }
 
 int Log::lastLogIndex() {
@@ -38,6 +46,11 @@ int Log::lastLogTerm() {
 int Log::getTerm(int index) {
 	return (index < 0 || index > this->lastLogIndex()) ?
 		-1 : this->get(index)->term;
+}
+
+int Log::getConnectionId(int index) {
+	return (index < 0 || index > this->lastLogIndex()) ?
+		-1 : this->get(index)->conn_id;
 }
 
 bool Log::match(int index, int term) {
@@ -53,28 +66,62 @@ entry* Log::get(int index) {
 	return e;
 }
 
-void Log::add(int term, const char command[COMMAND_STR_LENGTH]) {
+// Leader
+void Log::add(int term, int conn_id, const char command[COMMAND_STR_LENGTH]) {
 	// set string
 	entry* e = NULL;
 	while (e == NULL) {
 		e = (entry*)malloc(sizeof(entry));
 	}
-	fields2entry(e, term, command);
+	fields2entry(e, term, conn_id, command);
 	char str[COMMAND_STR_LENGTH];
 	entry2str(e, str);
 
 	// add to log
 	_mtx.lock();
 
-	auto out = this->getOFStream(true);
-	*out << str << endl;
 	this->_log.push_back(e);
 
 	_mtx.unlock();
+}
 
-	// print
-	//cout << "log[" << this->lastLogIndex() << "] = \"" << str << "\"" << endl;
-	//printAll();
+// Follower
+void Log::add(entry* entries[], int num) {
+	_mtx.lock();
+	auto out = this->getOFStream(true);
+	for (int i = 0; i < num; i++) {
+		entry* e = entries[i];
+		char str[COMMAND_STR_LENGTH];
+		entry2str(e, str);
+
+		// add to log
+		*out << str << endl;
+		this->_log.push_back(e);
+	}
+	*out << std::flush;
+
+	_mtx.unlock();
+}
+
+int Log::getLastSyncedIndex() {
+	return this->lastSyncedIndex;
+}
+
+void Log::sync() {
+	auto out = this->getOFStream(true);
+
+	int lastIndex = this->lastLogIndex();
+	for (int i = this->getLastSyncedIndex() + 1; i <= lastIndex; i++) {
+		entry* e = this->get(i);
+		char str[COMMAND_STR_LENGTH];
+		entry2str(e, str);
+
+		*out << str << endl;
+	}
+	*out << std::flush;
+
+	this->lastSyncedIndex = lastIndex;
+
 }
 
 void Log::printAll() {

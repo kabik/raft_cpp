@@ -8,13 +8,22 @@ Node::Node(string* hostname, int listenPort) {
 	this->sendSock = -1;
 }
 
+int Node::getID() {
+	return this->id;
+}
+void Node::setID(int id) {
+	this->id = id;
+}
+
 void Node::_send(char* message, int length) {
 	//cout << "send message to " << this->getHostname() << " [" << message << "] sock=" << sendSock << endl;
+	_mtx.lock();
 	if (S_SEND(this->getSendSock(), message, length, 0) < 0) {
 		perror("write");
 		this->sendSock = -1;
 		cout << "    node is " << this->getHostname() << endl;
 	}
+	_mtx.unlock();
 }
 
 string Node::getHostname() {

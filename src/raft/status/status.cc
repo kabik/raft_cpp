@@ -67,7 +67,7 @@ void Status::incrementSavedCount(int index) {
 
 	while (this->savedCounts.size() <= index) {
 		// myself
-		this->savedCounts.push_back(1);
+		this->savedCounts.push_back(0);
 	}
 	this->savedCounts[index]++;
 
